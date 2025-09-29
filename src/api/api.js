@@ -1,30 +1,45 @@
-// src/api.js
-// test
-// Default to Render backend in production, localhost in dev
-const backend =
-  process.env.REACT_APP_BACKEND_URL ||
-  (process.env.NODE_ENV === "production"
-    ? "https://rugby-backend.onrender.com"
-    : "http://localhost:5001");
+// src/api/api.js
 
-export async function apiFetch(path, options = {}) {
-  try {
-    const res = await fetch(`${backend}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
-      },
-    });
+const API_BASE =
+  process.env.NODE_ENV === "production"
+    ? "https://rugby-backend.onrender.com/api"
+    : "http://localhost:5000/api";
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`API error: ${res.status} - ${text}`);
-    }
+// Fetch competitions
+export async function fetchCompetitions() {
+  const res = await fetch(`${API_BASE}/competitions`);
+  if (!res.ok) throw new Error("Failed to fetch competitions");
+  return res.json();
+}
 
-    return await res.json();
-  } catch (err) {
-    console.error("❌ API fetch failed:", err);
-    throw err;
-  }
+// Fetch matches
+export async function fetchMatches() {
+  const res = await fetch(`${API_BASE}/matches`);
+  if (!res.ok) throw new Error("Failed to fetch matches");
+  return res.json();
+}
+
+// Fetch leaderboard
+export async function fetchLeaderboard() {
+  const res = await fetch(`${API_BASE}/leaderboard`);
+  if (!res.ok) throw new Error("Failed to fetch leaderboard");
+  return res.json();
+}
+
+// Fetch predictions for a user
+export async function fetchPredictions(userId) {
+  const res = await fetch(`${API_BASE}/predictions?userId=${userId}`);
+  if (!res.ok) throw new Error("Failed to fetch predictions");
+  return res.json();
+}
+
+// Submit a prediction
+export async function submitPrediction(prediction) {
+  const res = await fetch(`${API_BASE}/predictions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(prediction),
+  });
+  if (!res.ok) throw new Error("Failed to submit prediction");
+  return res.json();
 }
