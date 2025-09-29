@@ -1,45 +1,59 @@
 // src/api/api.js
 
-const API_BASE =
-  process.env.NODE_ENV === "production"
-    ? "https://rugby-backend.onrender.com/api"
-    : "http://localhost:5000/api";
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:5001";
 
-// Fetch competitions
+// 🔹 Helper for fetch requests
+async function request(endpoint, options = {}) {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", // ✅ important for cookies/sessions
+      ...options,
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("API request failed:", error);
+    throw error;
+  }
+}
+
+// 🔹 API functions
 export async function fetchCompetitions() {
-  const res = await fetch(`${API_BASE}/competitions`);
-  if (!res.ok) throw new Error("Failed to fetch competitions");
-  return res.json();
+  return request("/api/competitions");
 }
 
-// Fetch matches
 export async function fetchMatches() {
-  const res = await fetch(`${API_BASE}/matches`);
-  if (!res.ok) throw new Error("Failed to fetch matches");
-  return res.json();
+  return request("/api/matches");
 }
 
-// Fetch leaderboard
 export async function fetchLeaderboard() {
-  const res = await fetch(`${API_BASE}/leaderboard`);
-  if (!res.ok) throw new Error("Failed to fetch leaderboard");
-  return res.json();
+  return request("/api/leaderboard");
 }
 
-// Fetch predictions for a user
 export async function fetchPredictions(userId) {
-  const res = await fetch(`${API_BASE}/predictions?userId=${userId}`);
-  if (!res.ok) throw new Error("Failed to fetch predictions");
-  return res.json();
+  return request(`/api/predictions/${userId}`);
 }
 
-// Submit a prediction
 export async function submitPrediction(prediction) {
-  const res = await fetch(`${API_BASE}/predictions`, {
+  return request("/api/predictions", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(prediction),
   });
-  if (!res.ok) throw new Error("Failed to submit prediction");
-  return res.json();
 }
+
+// 🔹 Default export (so pages can call apiFetch.fetchMatches etc.)
+const apiFetch = {
+  fetchCompetitions,
+  fetchMatches,
+  fetchLeaderboard,
+  fetchPredictions,
+  submitPrediction,
+};
+
+export default apiFetch;
