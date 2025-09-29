@@ -1,18 +1,20 @@
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 module.exports = function (app) {
-  // Default port
-  const DEFAULT_PORT = 5000;
+  // Local backend for development
+  const LOCAL_BACKEND = "http://localhost:5000";
 
-  // If you started backend on another port, 
-  // it prints "🚀 Server running on port X"
-  // so we'll let you override with BACKEND_PORT env variable if needed
-  const backendPort = process.env.BACKEND_PORT || DEFAULT_PORT;
+  // Remote backend (your deployed API)
+  const REMOTE_BACKEND = "https://rugby-backend.onrender.com"; // ⬅️ Replace if needed
+
+  // Pick target based on environment
+  const target =
+    process.env.NODE_ENV === "production" ? REMOTE_BACKEND : LOCAL_BACKEND;
 
   app.use(
     "/api",
     createProxyMiddleware({
-      target: `http://localhost:${backendPort}`,
+      target,
       changeOrigin: true,
     })
   );

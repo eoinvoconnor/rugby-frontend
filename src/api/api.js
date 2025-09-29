@@ -1,5 +1,11 @@
+// src/api.js
+
+// Default to Render backend in production, localhost in dev
 const backend =
-  process.env.REACT_APP_BACKEND_URL || "http://localhost:5001";
+  process.env.REACT_APP_BACKEND_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://rugby-backend.onrender.com"
+    : "http://localhost:5001");
 
 export async function apiFetch(path, options = {}) {
   try {
@@ -18,7 +24,7 @@ export async function apiFetch(path, options = {}) {
 
     return await res.json();
   } catch (err) {
-    console.error(err);
+    console.error("❌ API fetch failed:", err);
     throw err;
   }
 }
