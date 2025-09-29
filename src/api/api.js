@@ -1,59 +1,35 @@
 // src/api/api.js
 
 const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5001";
+  process.env.REACT_APP_API_URL || "http://localhost:5001/api";
 
-// 🔹 Helper for fetch requests
-async function request(endpoint, options = {}) {
+/**
+ * Wrapper for API fetch calls
+ */
+export async function apiFetch(endpoint, options = {}) {
+  const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(url, {
       headers: { "Content-Type": "application/json" },
-      credentials: "include", // ✅ important for cookies/sessions
+      credentials: "include",
       ...options,
     });
-
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
-
     return await response.json();
-  } catch (error) {
-    console.error("API request failed:", error);
-    throw error;
+  } catch (err) {
+    console.error("Fetch error:", err);
+    throw err;
   }
 }
 
-// 🔹 API functions
-export async function fetchCompetitions() {
-  return request("/api/competitions");
+/**
+ * Utility to get backend status for the banner
+ */
+export function getBackendStatus() {
+  return {
+    url: API_BASE_URL,
+    ok: !!API_BASE_URL,
+  };
 }
-
-export async function fetchMatches() {
-  return request("/api/matches");
-}
-
-export async function fetchLeaderboard() {
-  return request("/api/leaderboard");
-}
-
-export async function fetchPredictions(userId) {
-  return request(`/api/predictions/${userId}`);
-}
-
-export async function submitPrediction(prediction) {
-  return request("/api/predictions", {
-    method: "POST",
-    body: JSON.stringify(prediction),
-  });
-}
-
-// 🔹 Default export (so pages can call apiFetch.fetchMatches etc.)
-const apiFetch = {
-  fetchCompetitions,
-  fetchMatches,
-  fetchLeaderboard,
-  fetchPredictions,
-  submitPrediction,
-};
-
-export default apiFetch;
