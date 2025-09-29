@@ -1,69 +1,53 @@
-// src/UserLogin.js
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { apiFetch } from "../api/api";
-import { useUser } from "../context/UserContext"; // if used in that fileimport 
+import React, { useState } from "react";
 import {
-  Box,
-  Button,
+  Container,
   TextField,
-  Typography,
+  Button,
   Paper,
-  Alert,
+  Typography,
+  Stack,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  Alert,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { useUser } from "../context/UserContext";
+import apiFetch from "../api/api"; // ✅ fixed import
 
 function UserLogin() {
   const navigate = useNavigate();
-  const { user, loginUser } = useUser();
-
+  const { loginUser } = useUser();
   const [email, setEmail] = useState("");
   const [firstname, setFirstname] = useState("");
   const [surname, setSurname] = useState("");
-  const [rememberMe, setRememberMe] = useState(true); // ✅ default ON
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
-  // 🔹 If already logged in, skip login page
-  useEffect(() => {
-    if (user) {
-      navigate("/matches");
-    }
-  }, [user, navigate]);
-
   const handleLogin = async () => {
-    setError("");
-
     if (!email || !firstname || !surname) {
-      setError("Please fill in all fields.");
+      setError("⚠️ Please fill all fields.");
       return;
     }
+    setError("");
 
     try {
-      // ✅ Use context login function
-      const loggedInUser = await loginUser(email, firstname, surname, rememberMe);
-
-      if (!loggedInUser) {
-        throw new Error("Login failed");
+      const user = await loginUser(email, firstname, surname, rememberMe);
+      if (user) {
+        navigate("/matches");
+      } else {
+        setError("❌ Login failed.");
       }
-
-      navigate("/matches");
     } catch (err) {
-      console.error("Login error:", err);
-      setError("Login failed. Please try again.");
+      console.error("❌ Login error:", err);
+      setError("❌ An error occurred. Please try again.");
     }
   };
 
   return (
-    <Box
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      minHeight="80vh"
-    >
-      <Paper elevation={3} sx={{ p: 4, width: 400 }}>
+    <Container maxWidth="sm" sx={{ mt: 4 }}>
+      <Paper sx={{ p: 3 }}>
         <Typography variant="h5" gutterBottom>
-          Login / Register
+          Login
         </Typography>
 
         {error && (
@@ -72,55 +56,41 @@ function UserLogin() {
           </Alert>
         )}
 
-        <TextField
-          label="Email"
-          type="email"
-          fullWidth
-          margin="normal"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <TextField
-          label="First Name"
-          fullWidth
-          margin="normal"
-          value={firstname}
-          onChange={(e) => setFirstname(e.target.value)}
-        />
-
-        <TextField
-          label="Surname"
-          fullWidth
-          margin="normal"
-          value={surname}
-          onChange={(e) => setSurname(e.target.value)}
-        />
-
-        {/* ✅ Remember Me option */}
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              color="primary"
-            />
-          }
-          label="Remember me on this device"
-          sx={{ mt: 1 }}
-        />
-
-        <Button
-          variant="contained"
-          color="primary"
-          fullWidth
-          sx={{ mt: 2 }}
-          onClick={handleLogin}
-        >
-          Submit
-        </Button>
+        <Stack spacing={2}>
+          <TextField
+            label="First Name"
+            value={firstname}
+            onChange={(e) => setFirstname(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Surname"
+            value={surname}
+            onChange={(e) => setSurname(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Email"
+            value={email}
+            type="email"
+            onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+            }
+            label="Remember Me"
+          />
+          <Button variant="contained" onClick={handleLogin}>
+            Login
+          </Button>
+        </Stack>
       </Paper>
-    </Box>
+    </Container>
   );
 }
 

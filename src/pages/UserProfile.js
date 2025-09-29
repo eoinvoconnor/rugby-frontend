@@ -1,85 +1,102 @@
-// src/UserProfile.js
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Container,
   Typography,
+  TextField,
+  Button,
   Paper,
   Stack,
-  Button,
-  Chip,
-  Snackbar,
-  Alert
+  Alert,
 } from "@mui/material";
-import { apiFetch } from "../api/api";
-import { useUser } from "../context/UserContext"; // if used in that file
+import { useUser } from "../context/UserContext";
+import apiFetch from "../api/api"; // ✅ fixed import
+
 function UserProfile() {
-  const { user, logoutUser } = useUser();
-  const [snackbar, setSnackbar] = React.useState({
-    open: false,
-    message: "",
-    severity: "info",
-  });
+  const { user, setUser } = useUser();
+  const [firstname, setFirstname] = useState(user?.firstname || "");
+  const [surname, setSurname] = useState(user?.surname || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setFirstname(user.firstname || "");
+      setSurname(user.surname || "");
+      setEmail(user.email || "");
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    try {
+      const updated = await apiFetch(`/api/users/${user.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ firstname, surname, email }),
+      });
+
+      if (updated && updated.id) {
+        setUser(updated);
+        localStorage.setItem("user", JSON.stringify(updated));
+        setMessage("✅ Profile updated successfully.");
+      } else {
+        throw new Error("Update failed");
+      }
+    } catch (err) {
+      console.error("❌ Profile update error:", err);
+      setMessage("❌ Failed to update profile.");
+    }
+  };
 
   if (!user) {
     return (
       <Container sx={{ mt: 4 }}>
-        <Typography variant="h6">⚠️ You must log in to view your profile.</Typography>
+        <Alert severity="warning">⚠️ Please log in to view your profile.</Alert>
       </Container>
     );
   }
 
   return (
-    <Container sx={{ mt: 4 }}>
+    <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Paper sx={{ p: 3 }}>
         <Typography variant="h5" gutterBottom>
           My Profile
         </Typography>
 
-        <Stack spacing={2} sx={{ mt: 2 }}>
-          <Typography>
-            <strong>Name:</strong> {user.firstname} {user.surname}
-          </Typography>
-          <Typography>
-            <strong>Email:</strong> {user.email}
-          </Typography>
-          <Typography>
-            <strong>Role:</strong>{" "}
-            {user.isAdmin ? (
-              <Chip label="Admin" color="secondary" size="small" />
-            ) : (
-              <Chip label="User" color="primary" size="small" />
-            )}
-          </Typography>
+        {message && (
+          <Alert
+            severity={message.startsWith("✅") ? "success" : "error"}
+            sx={{ mb: 2 }}
+          >
+            {message}
+          </Alert>
+        )}
+
+        <Stack spacing={2}>
+          <TextField
+            label="First Name"
+            value={firstname}
+            onChange={(e) => setFirstname(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Surname"
+            value={surname}
+            onChange={(e) => setSurname(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Email"
+            value={email}
+            type="email"
+            onChange={(e) => setEmail(e.target.value)}
+            fullWidth
+          />
+          <Button variant="contained" onClick={handleSave}>
+            Save Changes
+          </Button>
         </Stack>
-
-        <Button
-          variant="contained"
-          color="error"
-          sx={{ mt: 3 }}
-          onClick={() => {
-            logoutUser();
-            setSnackbar({
-              open: true,
-              message: "👋 You have been logged out.",
-              severity: "info",
-            });
-          }}
-        >
-          Logout
-        </Button>
       </Paper>
-
-      {/* 🚨 Snackbar for forced logout */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={5000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Container>
   );
 }

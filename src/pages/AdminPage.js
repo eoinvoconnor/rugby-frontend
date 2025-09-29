@@ -1,9 +1,8 @@
-// src/AdminPage.js
-import React, { useEffect, useState, useCallback } from "react";
-import { apiFetch } from "../api/api";
+import React, { useEffect, useState } from "react";
 import {
   Container,
   Typography,
+  Button,
   Paper,
   Accordion,
   AccordionSummary,
@@ -20,9 +19,9 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
-import ReplayIcon from "@mui/icons-material/Replay";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { DataGrid } from "@mui/x-data-grid";
+import apiFetch from "../api/api"; // ✅ fixed import
 
 function AdminPage() {
   const [matches, setMatches] = useState([]);
@@ -40,7 +39,6 @@ function AdminPage() {
   });
 
   const [editMode, setEditMode] = useState(false);
-  const [filterCompetition, setFilterCompetition] = useState(null);
 
   // 🔹 Standard competitions with names + URLs
   const standardCompetitions = [
@@ -53,29 +51,22 @@ function AdminPage() {
     { name: "Six Nations", url: "webcal://ics.ecal.com/ecal-sub/68d28557f028450008896c2a/Six%20Nations%20Rugby.ics" },
   ];
 
-  // ✅ Wrap loadData so useEffect can depend on it
-  const loadData = useCallback(async () => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  async function loadData() {
     try {
       const comps = await apiFetch("/api/competitions");
       setCompetitions(comps);
 
       const matchList = await apiFetch("/api/matches");
-      const withStats = matchList
-        .map((m) => ({
-          ...m,
-          predictionsCount: 0,
-          resultsCount: m.result?.winner ? 1 : 0,
-        }))
-        .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff)); // ✅ default sort
-      setMatches(withStats);
+      const withPreds = matchList.map((m) => ({ ...m, predictionsCount: 0 }));
+      setMatches(withPreds);
     } catch (err) {
       console.error("❌ Failed to load data:", err);
     }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  }
 
   // 🔄 Recalculate results + leaderboard via server scrape
   async function handleRecalculate() {
@@ -313,7 +304,6 @@ function AdminPage() {
         ),
     },
     { field: "predictionsCount", headerName: "Predictions Submitted", flex: 1 },
-    { field: "resultsCount", headerName: "Result Set?", flex: 0.8 },
   ];
 
   async function handleRowUpdate(newRow) {
@@ -328,22 +318,16 @@ function AdminPage() {
     }
   }
 
-  // ✅ Apply competition filter
-  const filteredMatches = filterCompetition
-    ? matches.filter((m) => m.competitionName === filterCompetition)
-    : matches;
-
   return (
     <Container sx={{ mt: 2 }}>
-      {/* 🔘 Icon buttons row */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         <Tooltip title="Recalculate Results & Leaderboard">
           <IconButton color="secondary" onClick={handleRecalculate}>
-            <ReplayIcon />
+            <RefreshIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title={editMode ? "Done Editing" : "Edit Results"}>
-          <IconButton color="primary" onClick={() => setEditMode((prev) => !prev)}>
+          <IconButton onClick={() => setEditMode((prev) => !prev)}>
             <EditIcon />
           </IconButton>
         </Tooltip>
@@ -352,28 +336,6 @@ function AdminPage() {
             <LogoutIcon />
           </IconButton>
         </Tooltip>
-      </Stack>
-
-      {/* 🎯 Quick Competition Filters */}
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap">
-        <Chip
-          label="All"
-          color={!filterCompetition ? "primary" : "default"}
-          onClick={() => setFilterCompetition(null)}
-        />
-        {competitions.map((c) => (
-          <Chip
-            key={c.id}
-            label={c.name}
-            sx={{
-              bgcolor: filterCompetition === c.name ? c.color || "#1976d2" : undefined,
-              color: filterCompetition === c.name ? "white" : undefined,
-            }}
-            onClick={() =>
-              setFilterCompetition(filterCompetition === c.name ? null : c.name)
-            }
-          />
-        ))}
       </Stack>
 
       {/* 📌 Competitions Accordion */}
@@ -443,13 +405,13 @@ function AdminPage() {
                 >
                   <DeleteIcon />
                 </IconButton>
-                <Paper
-                  variant="outlined"
-                  sx={{ p: 1 }}
+                <Button
+                  variant="contained"
+                  size="small"
                   onClick={() => handleUpdateCompetition(c)}
                 >
                   Save
-                </Paper>
+                </Button>
               </Paper>
             ))}
 
@@ -499,13 +461,9 @@ function AdminPage() {
                   }
                   sx={{ width: 80 }}
                 />
-                <Paper
-                  variant="outlined"
-                  sx={{ p: 1 }}
-                  onClick={handleAddCompetition}
-                >
+                <Button variant="contained" onClick={handleAddCompetition}>
                   Add
-                </Paper>
+                </Button>
               </Stack>
             </Paper>
           </Stack>
@@ -515,7 +473,7 @@ function AdminPage() {
       {/* 📋 Matches Table */}
       <Paper sx={{ height: 600 }}>
         <DataGrid
-          rows={filteredMatches}
+          rows={matches}
           columns={columns}
           getRowId={(row) => row.id}
           processRowUpdate={handleRowUpdate}

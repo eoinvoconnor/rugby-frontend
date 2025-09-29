@@ -1,197 +1,152 @@
-// src/pages/MyPredictionsPage.js
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Container,
   Typography,
   Paper,
-  Chip,
-  Snackbar,
-  Alert,
+  Box,
   Stack,
+  Chip,
+  ToggleButton,
+  ToggleButtonGroup,
   Button,
 } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
-import { apiFetch } from "../api/api";
+import dayjs from "dayjs";
+import apiFetch from "../api/api"; // ✅ fixed import
 import { useUser } from "../context/UserContext";
 
 function MyPredictionsPage() {
   const { user } = useUser();
   const [predictions, setPredictions] = useState([]);
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
-  const [expired, setExpired] = useState(false);
-  const [competitionFilter, setCompetitionFilter] = useState("ALL");
-
-  const gridRef = useRef(null);
+  const [matches, setMatches] = useState([]);
+  const [competitions, setCompetitions] = useState([]);
+  const [selectedComp, setSelectedComp] = useState("ALL");
 
   useEffect(() => {
-    if (!user) return;
-
-    apiFetch(`/api/predictions?userId=${user.id}`)
-      .then((data) => {
-        // Sort predictions by date ascending
-        const sorted = [...data].sort(
-          (a, b) => new Date(a.kickoff) - new Date(b.kickoff)
-        );
-        setPredictions(sorted);
-      })
-      .catch((err) => {
-        console.error("❌ Failed to load predictions:", err);
-        if (err.message.includes("session")) {
-          setExpired(true);
-        }
-      });
+    if (user) {
+      loadPredictions();
+    }
   }, [user]);
 
-  // Unique competitions
-  const competitions = [
-    ...new Map(
-      predictions.map((p) => [
-        p.competitionId,
-        { id: p.competitionId, name: p.competitionName, color: p.competitionColor },
-      ])
-    ).values(),
-  ];
+  async function loadPredictions() {
+    try {
+      const comps = await apiFetch("/api/competitions");
+      setCompetitions(comps);
 
-  // Apply filter
-  const filteredPredictions =
-    competitionFilter === "ALL"
-      ? predictions
-      : predictions.filter((p) => p.competitionName === competitionFilter);
+      const allMatches = await apiFetch("/api/matches");
+      setMatches(allMatches);
 
-  // Jump to first upcoming prediction
-  const handleJumpToNow = () => {
-    const now = new Date();
-    const idx = filteredPredictions.findIndex(
-      (p) => new Date(p.kickoff) > now
-    );
-    if (idx !== -1 && gridRef.current) {
-      gridRef.current.scrollToIndexes({ rowIndex: idx });
+      const preds = await apiFetch(`/api/predictions/${user.id}`);
+      setPredictions(preds);
+    } catch (err) {
+      console.error("❌ Failed to load predictions:", err);
     }
-  };
-
-  const columns = [
-    {
-      field: "kickoff",
-      headerName: "Date",
-      flex: 1,
-      valueFormatter: (params) =>
-        params.value ? new Date(params.value).toLocaleString("en-GB") : "—",
-    },
-    { field: "teamA", headerName: "Team A", flex: 1 },
-    { field: "teamB", headerName: "Team B", flex: 1 },
-    { field: "winner", headerName: "Your Pick", flex: 1 },
-    {
-      field: "margin",
-      headerName: "Margin",
-      flex: 0.5,
-      renderCell: (params) =>
-        params.row.margin !== null ? (
-          <Typography>{params.row.margin}</Typography>
-        ) : (
-          "—"
-        ),
-    },
-    {
-      field: "points",
-      headerName: "Points",
-      flex: 0.5,
-      renderCell: (params) =>
-        params.row.points !== null ? (
-          <Typography sx={{ fontWeight: "bold" }}>{params.row.points}</Typography>
-        ) : (
-          "—"
-        ),
-    },
-  ];
-
-  if (expired) {
-    return (
-      <Container sx={{ mt: 2 }}>
-        <Typography color="error">
-          🚨 Your session has expired. Please log in again.
-        </Typography>
-      </Container>
-    );
   }
+
+  const mergedPredictions = useMemo(() => {
+    return predictions
+      .map((p) => {
+        const match = matches.find((m) => m.id === p.matchId);
+        return match
+          ? {
+              ...p,
+              teamA: match.teamA,
+              teamB: match.teamB,
+              competitionName: match.competitionName,
+              competitionColor: match.competitionColor,
+              kickoff: match.kickoff,
+            }
+          : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+  }, [predictions, matches]);
+
+  const filteredPredictions = mergedPredictions.filter(
+    (p) => selectedComp === "ALL" || p.competitionName === selectedComp
+  );
 
   return (
     <Container sx={{ mt: 2 }}>
+      {/* 📌 Competition Filters */}
       <Stack
         direction="row"
-        spacing={2}
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 2 }}
+        spacing={1}
+        mb={2}
+        flexWrap="wrap"
+        justifyContent="center"
       >
-        <Typography variant="h5">My Predictions</Typography>
-        <Button variant="outlined" size="small" onClick={handleJumpToNow}>
-          Jump to Now
-        </Button>
+        <ToggleButtonGroup
+          value={selectedComp}
+          exclusive
+          onChange={(e, val) => val && setSelectedComp(val)}
+        >
+          <ToggleButton value="ALL">ALL</ToggleButton>
+          {competitions.map((c) => (
+            <ToggleButton key={c.id} value={c.name}>
+              <Chip
+                label={c.name}
+                sx={{
+                  bgcolor: selectedComp === c.name ? "grey.500" : c.color,
+                  color: "white",
+                }}
+              />
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
       </Stack>
 
-      {/* Competition filter chips */}
-      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
-        <Chip
-          label="ALL"
-          onClick={() => setCompetitionFilter("ALL")}
-          sx={{
-            bgcolor: competitionFilter === "ALL" ? "primary.main" : "grey.400",
-            color: "white",
-          }}
-        />
-        {competitions.map((c) => (
-          <Chip
-            key={c.id}
-            label={c.name}
-            onClick={() => setCompetitionFilter(c.name)}
+      {/* 📋 Predictions List */}
+      {filteredPredictions.length === 0 ? (
+        <Typography>No predictions yet.</Typography>
+      ) : (
+        filteredPredictions.map((p) => (
+          <Paper
+            key={p.matchId}
             sx={{
-              bgcolor:
-                competitionFilter === c.name ? "grey.400" : c.color || "#888",
-              color: "white",
+              p: 2,
+              mb: 2,
+              borderLeft: `6px solid ${p.competitionColor || "#888"}`,
             }}
-          />
-        ))}
-      </Stack>
+          >
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Typography sx={{ flex: 1 }}>
+                {p.teamA} vs {p.teamB}
+              </Typography>
+              <Chip
+                label={p.winner}
+                sx={{
+                  bgcolor: p.competitionColor || "primary.main",
+                  color: "white",
+                }}
+              />
+              <Typography>Margin: {p.margin || "—"}</Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              {dayjs(p.kickoff).format("dddd, D MMMM YYYY")}
+            </Typography>
+          </Paper>
+        ))
+      )}
 
-      {/* Predictions table */}
-      <Paper sx={{ height: 600 }}>
-        <DataGrid
-          rows={filteredPredictions}
-          columns={columns}
-          getRowId={(row) => row.id}
-          disableRowSelectionOnClick
-          pageSizeOptions={[10, 25, 50]}
-          getRowClassName={(params) => `competition-${params.row.competitionId}`}
-          sx={{
-            "& .MuiDataGrid-row": {
-              borderLeft: "6px solid transparent",
-            },
-            "& .MuiDataGrid-row:hover": {
-              filter: "brightness(0.95)",
-            },
-            // 🔹 Dynamic competition colors on row border
-            ...(competitions.reduce((acc, comp) => {
-              acc[`.competition-${comp.id}`] = {
-                borderLeft: `6px solid ${comp.color || "#888"}`,
-              };
-              return acc;
-            }, {})),
-          }}
-          slots={{}}
-          apiRef={gridRef}
-        />
-      </Paper>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={5000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert severity={snackbar.severity} sx={{ width: "100%" }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+      {/* Jump to Now button */}
+      {filteredPredictions.length > 0 && (
+        <Box display="flex" justifyContent="center" mt={2}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              const upcoming = filteredPredictions.find(
+                (p) => new Date(p.kickoff) > new Date()
+              );
+              if (upcoming) {
+                const el = document.getElementById(`match-${upcoming.matchId}`);
+                if (el) el.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+          >
+            Jump to Now
+          </Button>
+        </Box>
+      )}
     </Container>
   );
 }

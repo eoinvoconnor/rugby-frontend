@@ -1,145 +1,83 @@
-// src/pages/LeaderboardPage.js
 import React, { useEffect, useState } from "react";
 import {
   Container,
+  Typography,
   Paper,
+  Box,
   Stack,
   Chip,
-  Typography,
+  ToggleButton,
+  ToggleButtonGroup,
   Table,
+  TableBody,
+  TableCell,
+  TableContainer,
   TableHead,
   TableRow,
-  TableCell,
-  TableBody,
 } from "@mui/material";
-import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { apiFetch } from "../api/api";
+import apiFetch from "../api/api"; // ✅ fixed import
 
 function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [competitions, setCompetitions] = useState([]);
-  const [selectedCompetition, setSelectedCompetition] = useState("ALL");
-  const [previousLeaderboard, setPreviousLeaderboard] = useState([]);
+  const [selectedComp, setSelectedComp] = useState("ALL");
 
   useEffect(() => {
-    loadData();
+    loadLeaderboard();
   }, []);
 
-  async function loadData() {
+  async function loadLeaderboard() {
     try {
       const comps = await apiFetch("/api/competitions");
       setCompetitions(comps);
 
-      const data = await apiFetch("/api/leaderboard");
-      setLeaderboard(data);
+      const board = await apiFetch("/api/leaderboard");
+      setLeaderboard(board);
     } catch (err) {
       console.error("❌ Failed to load leaderboard:", err);
     }
   }
 
-  // Apply competition filter
-  const filteredLeaderboard = leaderboard
-    .map((entry) => {
-      if (selectedCompetition === "ALL") {
-        return {
-          ...entry,
-          earned: entry.earned,
-          submitted: entry.submitted,
-          accuracy: entry.accuracy,
-        };
-      } else {
-        const compStats = entry.competitions.find(
-          (c) => c.competitionId === selectedCompetition
-        );
-        return {
-          ...entry,
-          earned: compStats?.earned || 0,
-          submitted: compStats?.submitted || 0,
-          accuracy: compStats?.accuracy || 0,
-        };
-      }
-    })
-    .sort((a, b) => b.earned - a.earned);
-
-  // Track movement arrows
-  const withMovement = filteredLeaderboard.map((entry, index) => {
-    const prevIndex = previousLeaderboard.findIndex(
-      (prev) => prev.user === entry.user
-    );
-    let movement = 0;
-    if (prevIndex !== -1) {
-      movement = prevIndex - index; // positive = moved up
-    }
-    return { ...entry, rank: index + 1, movement };
-  });
-
-  useEffect(() => {
-    if (filteredLeaderboard.length > 0) {
-      setPreviousLeaderboard(
-        filteredLeaderboard.map((entry, idx) => ({
-          user: entry.user,
-          rank: idx + 1,
-        }))
-      );
-    }
-  }, [selectedCompetition, leaderboard]);
+  const filteredBoard = leaderboard.filter(
+    (entry) => selectedComp === "ALL" || entry.competition === selectedComp
+  );
 
   return (
     <Container sx={{ mt: 2 }}>
-      {/* 🔹 Overlay Filter Bar */}
-      <Paper
-        sx={{
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          mb: 2,
-          p: 1,
-          backgroundColor: "white",
-          boxShadow: 2,
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ flexWrap: "wrap", alignItems: "center" }}
-        >
-          <Chip
-            label="ALL"
-            clickable
-            onClick={() => setSelectedCompetition("ALL")}
-            sx={{
-              bgcolor: selectedCompetition === "ALL" ? "grey.800" : "grey.400",
-              color: "white",
-              fontWeight: selectedCompetition === "ALL" ? "bold" : "normal",
-            }}
-          />
-          {competitions.map((comp) => (
-            <Chip
-              key={comp.id}
-              label={comp.name}
-              clickable
-              onClick={() =>
-                setSelectedCompetition(
-                  selectedCompetition === comp.id ? "ALL" : comp.id
-                )
-              }
-              sx={{
-                bgcolor:
-                  selectedCompetition === "ALL" || selectedCompetition === comp.id
-                    ? comp.color || "#1976d2"
-                    : "grey.400",
-                color: "white",
-                fontWeight:
-                  selectedCompetition === comp.id ? "bold" : "normal",
-              }}
-            />
-          ))}
-        </Stack>
-      </Paper>
+      <Typography variant="h5" gutterBottom>
+        Leaderboard
+      </Typography>
 
-      {/* 🔹 Leaderboard Table */}
-      <Paper sx={{ p: 2 }}>
+      {/* 📌 Competition Filters */}
+      <Stack
+        direction="row"
+        spacing={1}
+        mb={2}
+        flexWrap="wrap"
+        justifyContent="center"
+      >
+        <ToggleButtonGroup
+          value={selectedComp}
+          exclusive
+          onChange={(e, val) => val && setSelectedComp(val)}
+        >
+          <ToggleButton value="ALL">ALL</ToggleButton>
+          {competitions.map((c) => (
+            <ToggleButton key={c.id} value={c.name}>
+              <Chip
+                label={c.name}
+                sx={{
+                  bgcolor: selectedComp === c.name ? "grey.500" : c.color,
+                  color: "white",
+                }}
+              />
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+      </Stack>
+
+      {/* 📋 Leaderboard Table */}
+      <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -150,25 +88,19 @@ function LeaderboardPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {withMovement.map((entry) => (
-              <TableRow key={entry.user}>
+            {filteredBoard.map((entry, idx) => (
+              <TableRow key={entry.userId}>
+                <TableCell>{idx + 1}</TableCell>
+                <TableCell>{entry.userName}</TableCell>
+                <TableCell>{entry.points}</TableCell>
                 <TableCell>
-                  {entry.rank}
-                  {entry.movement > 0 && (
-                    <ArrowDropUpIcon sx={{ color: "green" }} />
-                  )}
-                  {entry.movement < 0 && (
-                    <ArrowDropDownIcon sx={{ color: "red" }} />
-                  )}
+                  {entry.accuracy ? `${entry.accuracy.toFixed(1)}%` : "—"}
                 </TableCell>
-                <TableCell>{entry.user}</TableCell>
-                <TableCell>{entry.earned}</TableCell>
-                <TableCell>{entry.accuracy}%</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </Paper>
+      </TableContainer>
     </Container>
   );
 }
