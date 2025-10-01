@@ -1,5 +1,6 @@
 // src/context/UserContext.js
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { API_BASE_URL } from "../api/api"; // ✅ reuse the API base URL
 
 const UserContext = createContext();
 
@@ -21,7 +22,7 @@ export function UserProvider({ children }) {
     }
 
     // Fetch current session version from backend
-    fetch("http://localhost:5001/api/session-version")
+    fetch(`${API_BASE_URL}/session-version`)
       .then((res) => res.json())
       .then((data) => {
         if (data.sessionVersion) {
@@ -35,7 +36,7 @@ export function UserProvider({ children }) {
   const loginUser = async (email, firstname, surname, rememberMe = false) => {
     try {
       // 1. Get latest session version
-      const versionRes = await fetch("http://localhost:5001/api/session-version");
+      const versionRes = await fetch(`${API_BASE_URL}/session-version`);
       let currentVersion = null;
       if (versionRes.ok) {
         const { sessionVersion: serverVersion } = await versionRes.json();
@@ -44,7 +45,7 @@ export function UserProvider({ children }) {
       }
 
       // 2. Login request
-      const res = await fetch("http://localhost:5001/api/users/login", {
+      const res = await fetch(`${API_BASE_URL}/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, firstname, surname }),
