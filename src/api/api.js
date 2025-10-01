@@ -10,7 +10,8 @@ const API_BASE_URL =
  */
 export async function apiFetch(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
-
+  console.log("🌍 API base URL:", API_BASE_URL);
+  
   const response = await fetch(url, {
     ...options,
     credentials: "include", // ✅ include cookies/session
