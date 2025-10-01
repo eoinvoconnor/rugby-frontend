@@ -1,46 +1,52 @@
+// src/pages/LeaderboardPage.js
 import React, { useEffect, useState } from "react";
 import {
   Container,
   Typography,
   Paper,
-  Box,
-  Stack,
   Chip,
-  ToggleButton,
-  ToggleButtonGroup,
+  Stack,
   Table,
-  TableBody,
-  TableCell,
-  TableContainer,
   TableHead,
   TableRow,
+  TableCell,
+  TableBody,
+  Box,
 } from "@mui/material";
-import apiFetch from "../api/api"; // ✅ fixed import
+import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import { apiFetch } from "../api/api"; // ✅ fixed import
 
 function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [competitions, setCompetitions] = useState([]);
-  const [selectedComp, setSelectedComp] = useState("ALL");
+  const [filter, setFilter] = useState("ALL");
+  const [previous, setPrevious] = useState([]);
 
   useEffect(() => {
-    loadLeaderboard();
+    loadData();
   }, []);
 
-  async function loadLeaderboard() {
+  async function loadData() {
     try {
-      const comps = await apiFetch("/api/competitions");
+      const comps = await apiFetch("/competitions");
       setCompetitions(comps);
 
-      const board = await apiFetch("/api/leaderboard");
+      const board = await apiFetch("/leaderboard");
       setLeaderboard(board);
     } catch (err) {
       console.error("❌ Failed to load leaderboard:", err);
     }
   }
 
-  const filteredBoard = leaderboard.filter(
-    (entry) => selectedComp === "ALL" || entry.competition === selectedComp
-  );
+  const filteredBoard =
+    filter === "ALL"
+      ? leaderboard
+      : leaderboard.map((user) => ({
+          ...user,
+          points: user.pointsByComp?.[filter] || 0,
+          accuracy: user.accuracyByComp?.[filter] || 0,
+        }));
 
   return (
     <Container sx={{ mt: 2 }}>
@@ -48,59 +54,72 @@ function LeaderboardPage() {
         Leaderboard
       </Typography>
 
-      {/* 📌 Competition Filters */}
-      <Stack
-        direction="row"
-        spacing={1}
-        mb={2}
-        flexWrap="wrap"
-        justifyContent="center"
-      >
-        <ToggleButtonGroup
-          value={selectedComp}
-          exclusive
-          onChange={(e, val) => val && setSelectedComp(val)}
-        >
-          <ToggleButton value="ALL">ALL</ToggleButton>
-          {competitions.map((c) => (
-            <ToggleButton key={c.id} value={c.name}>
-              <Chip
-                label={c.name}
-                sx={{
-                  bgcolor: selectedComp === c.name ? "grey.500" : c.color,
-                  color: "white",
-                }}
-              />
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+      {/* 📌 Competition Filter */}
+      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
+        <Chip
+          label="ALL"
+          color={filter === "ALL" ? "primary" : "default"}
+          onClick={() => setFilter("ALL")}
+        />
+        {competitions.map((c) => (
+          <Chip
+            key={c.id}
+            label={c.name}
+            onClick={() => setFilter(c.name)}
+            sx={{
+              bgcolor: c.color || "#666",
+              color: "white",
+              opacity: filter === "ALL" || filter === c.name ? 1 : 0.5,
+            }}
+          />
+        ))}
       </Stack>
 
       {/* 📋 Leaderboard Table */}
-      <TableContainer component={Paper}>
+      <Paper>
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Rank</TableCell>
-              <TableCell>Player</TableCell>
-              <TableCell>Points</TableCell>
-              <TableCell>Accuracy %</TableCell>
+              <TableCell>User</TableCell>
+              <TableCell align="right">Points</TableCell>
+              <TableCell align="right">% Accuracy</TableCell>
+              <TableCell align="center">Trend</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredBoard.map((entry, idx) => (
-              <TableRow key={entry.userId}>
-                <TableCell>{idx + 1}</TableCell>
-                <TableCell>{entry.userName}</TableCell>
-                <TableCell>{entry.points}</TableCell>
-                <TableCell>
-                  {entry.accuracy ? `${entry.accuracy.toFixed(1)}%` : "—"}
-                </TableCell>
-              </TableRow>
-            ))}
+            {filteredBoard
+              .sort((a, b) => b.points - a.points)
+              .map((row, index) => {
+                const prevRank = previous.findIndex((u) => u.user === row.user);
+                let trend = null;
+                if (prevRank !== -1) {
+                  if (prevRank > index) trend = "up";
+                  else if (prevRank < index) trend = "down";
+                }
+
+                return (
+                  <TableRow key={row.user}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{row.user}</TableCell>
+                    <TableCell align="right">{row.points}</TableCell>
+                    <TableCell align="right">
+                      {row.accuracy?.toFixed(1) || 0}%
+                    </TableCell>
+                    <TableCell align="center">
+                      {trend === "up" && (
+                        <ArrowDropUpIcon sx={{ color: "green" }} />
+                      )}
+                      {trend === "down" && (
+                        <ArrowDropDownIcon sx={{ color: "red" }} />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
-      </TableContainer>
+      </Paper>
     </Container>
   );
 }

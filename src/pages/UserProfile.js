@@ -1,103 +1,76 @@
+// src/pages/UserProfile.js
 import React, { useEffect, useState } from "react";
-import {
-  Container,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-  Stack,
-  Alert,
-} from "@mui/material";
 import { useUser } from "../context/UserContext";
-import apiFetch from "../api/api"; // ✅ fixed import
+import { Box, Typography, Paper, Button, Stack } from "@mui/material";
+import { apiFetch } from "../api/api"; // ✅ fixed import
 
 function UserProfile() {
-  const { user, setUser } = useUser();
-  const [firstname, setFirstname] = useState(user?.firstname || "");
-  const [surname, setSurname] = useState(user?.surname || "");
-  const [email, setEmail] = useState(user?.email || "");
-  const [message, setMessage] = useState("");
+  const { user, logoutUser } = useUser();
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    if (user) {
-      setFirstname(user.firstname || "");
-      setSurname(user.surname || "");
-      setEmail(user.email || "");
-    }
-  }, [user]);
-
-  const handleSave = async () => {
-    if (!user) return;
-
-    try {
-      const updated = await apiFetch(`/api/users/${user.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ firstname, surname, email }),
-      });
-
-      if (updated && updated.id) {
-        setUser(updated);
-        localStorage.setItem("user", JSON.stringify(updated));
-        setMessage("✅ Profile updated successfully.");
-      } else {
-        throw new Error("Update failed");
+    async function loadStats() {
+      if (!user?.id) return;
+      try {
+        const data = await apiFetch(`/users/${user.id}/stats`);
+        setStats(data);
+      } catch (err) {
+        console.error("❌ Failed to fetch user stats:", err);
       }
-    } catch (err) {
-      console.error("❌ Profile update error:", err);
-      setMessage("❌ Failed to update profile.");
     }
-  };
+    loadStats();
+  }, [user]);
 
   if (!user) {
     return (
-      <Container sx={{ mt: 4 }}>
-        <Alert severity="warning">⚠️ Please log in to view your profile.</Alert>
-      </Container>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="70vh">
+        <Typography variant="h6">You must log in to view your profile.</Typography>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 4 }}>
-      <Paper sx={{ p: 3 }}>
+    <Box display="flex" justifyContent="center" mt={4}>
+      <Paper elevation={3} sx={{ p: 4, width: 500 }}>
         <Typography variant="h5" gutterBottom>
-          My Profile
+          {user.firstname} {user.surname}
+        </Typography>
+        <Typography variant="body1" gutterBottom>
+          Email: {user.email}
         </Typography>
 
-        {message && (
-          <Alert
-            severity={message.startsWith("✅") ? "success" : "error"}
-            sx={{ mb: 2 }}
-          >
-            {message}
-          </Alert>
+        {stats ? (
+          <Box mt={2}>
+            <Typography variant="subtitle1">Your Stats:</Typography>
+            <Typography variant="body2">Predictions: {stats.totalPredictions}</Typography>
+            <Typography variant="body2">Correct: {stats.correctPredictions}</Typography>
+            <Typography variant="body2">Points: {stats.points}</Typography>
+            <Typography variant="body2">Accuracy: {stats.accuracy}%</Typography>
+          </Box>
+        ) : (
+          <Typography variant="body2" mt={2}>
+            Loading stats...
+          </Typography>
         )}
 
-        <Stack spacing={2}>
-          <TextField
-            label="First Name"
-            value={firstname}
-            onChange={(e) => setFirstname(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Surname"
-            value={surname}
-            onChange={(e) => setSurname(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Email"
-            value={email}
-            type="email"
-            onChange={(e) => setEmail(e.target.value)}
-            fullWidth
-          />
-          <Button variant="contained" onClick={handleSave}>
-            Save Changes
+        <Stack direction="row" spacing={2} mt={3}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => window.location.href = "/matches"}
+          >
+            Back to Matches
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={logoutUser}
+          >
+            Logout
           </Button>
         </Stack>
       </Paper>
-    </Container>
+    </Box>
   );
 }
 

@@ -1,152 +1,135 @@
-import React, { useEffect, useState, useMemo } from "react";
+// src/pages/MyPredictionsPage.js
+import React, { useEffect, useState } from "react";
 import {
   Container,
   Typography,
   Paper,
   Box,
-  Stack,
   Chip,
-  ToggleButton,
-  ToggleButtonGroup,
+  Stack,
   Button,
 } from "@mui/material";
 import dayjs from "dayjs";
-import apiFetch from "../api/api"; // ✅ fixed import
+import { apiFetch } from "../api/api"; // ✅ fixed import
 import { useUser } from "../context/UserContext";
 
 function MyPredictionsPage() {
   const { user } = useUser();
   const [predictions, setPredictions] = useState([]);
-  const [matches, setMatches] = useState([]);
   const [competitions, setCompetitions] = useState([]);
-  const [selectedComp, setSelectedComp] = useState("ALL");
+  const [filter, setFilter] = useState("ALL");
 
   useEffect(() => {
     if (user) {
       loadPredictions();
+      loadCompetitions();
     }
   }, [user]);
 
   async function loadPredictions() {
     try {
-      const comps = await apiFetch("/api/competitions");
-      setCompetitions(comps);
-
-      const allMatches = await apiFetch("/api/matches");
-      setMatches(allMatches);
-
-      const preds = await apiFetch(`/api/predictions/${user.id}`);
-      setPredictions(preds);
+      const data = await apiFetch(`/predictions/${user.id}`);
+      setPredictions(data);
     } catch (err) {
       console.error("❌ Failed to load predictions:", err);
     }
   }
 
-  const mergedPredictions = useMemo(() => {
-    return predictions
-      .map((p) => {
-        const match = matches.find((m) => m.id === p.matchId);
-        return match
-          ? {
-              ...p,
-              teamA: match.teamA,
-              teamB: match.teamB,
-              competitionName: match.competitionName,
-              competitionColor: match.competitionColor,
-              kickoff: match.kickoff,
-            }
-          : null;
-      })
-      .filter(Boolean)
-      .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
-  }, [predictions, matches]);
+  async function loadCompetitions() {
+    try {
+      const comps = await apiFetch("/competitions");
+      setCompetitions(comps);
+    } catch (err) {
+      console.error("❌ Failed to load competitions:", err);
+    }
+  }
 
-  const filteredPredictions = mergedPredictions.filter(
-    (p) => selectedComp === "ALL" || p.competitionName === selectedComp
+  const filteredPredictions =
+    filter === "ALL"
+      ? predictions
+      : predictions.filter((p) => p.competition === filter);
+
+  // Group by date
+  const grouped = filteredPredictions.reduce((acc, pred) => {
+    const dateKey = dayjs(pred.date).format("YYYY-MM-DD");
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(pred);
+    return acc;
+  }, {});
+
+  const sortedDates = Object.keys(grouped).sort(
+    (a, b) => new Date(a) - new Date(b)
   );
+
+  const scrollToToday = () => {
+    const todayKey = dayjs().format("YYYY-MM-DD");
+    const el = document.getElementById(`date-${todayKey}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   return (
     <Container sx={{ mt: 2 }}>
-      {/* 📌 Competition Filters */}
       <Stack
         direction="row"
         spacing={1}
-        mb={2}
-        flexWrap="wrap"
-        justifyContent="center"
+        sx={{ mb: 2, flexWrap: "wrap", alignItems: "center" }}
       >
-        <ToggleButtonGroup
-          value={selectedComp}
-          exclusive
-          onChange={(e, val) => val && setSelectedComp(val)}
-        >
-          <ToggleButton value="ALL">ALL</ToggleButton>
-          {competitions.map((c) => (
-            <ToggleButton key={c.id} value={c.name}>
-              <Chip
-                label={c.name}
-                sx={{
-                  bgcolor: selectedComp === c.name ? "grey.500" : c.color,
-                  color: "white",
-                }}
-              />
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+        <Chip
+          label="ALL"
+          color={filter === "ALL" ? "primary" : "default"}
+          onClick={() => setFilter("ALL")}
+        />
+        {competitions.map((c) => (
+          <Chip
+            key={c.id}
+            label={c.name}
+            onClick={() => setFilter(c.name)}
+            sx={{
+              bgcolor: c.color || "#666",
+              color: "white",
+              opacity: filter === "ALL" || filter === c.name ? 1 : 0.5,
+            }}
+          />
+        ))}
+        <Button variant="outlined" onClick={scrollToToday}>
+          Jump to Today
+        </Button>
       </Stack>
 
-      {/* 📋 Predictions List */}
-      {filteredPredictions.length === 0 ? (
-        <Typography>No predictions yet.</Typography>
-      ) : (
-        filteredPredictions.map((p) => (
-          <Paper
-            key={p.matchId}
-            sx={{
-              p: 2,
-              mb: 2,
-              borderLeft: `6px solid ${p.competitionColor || "#888"}`,
-            }}
-          >
-            <Stack direction="row" spacing={2} alignItems="center">
+      {sortedDates.map((dateKey) => (
+        <Paper key={dateKey} id={`date-${dateKey}`} sx={{ p: 2, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            {dayjs(dateKey).format("dddd, D MMMM YYYY")}
+          </Typography>
+
+          {grouped[dateKey].map((p) => (
+            <Box
+              key={p._id}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                p: 1,
+                borderLeft: `8px solid ${p.color || "#ccc"}`,
+                mb: 1,
+                bgcolor: "#fafafa",
+              }}
+            >
               <Typography sx={{ flex: 1 }}>
                 {p.teamA} vs {p.teamB}
               </Typography>
               <Chip
-                label={p.winner}
+                label={`${p.predictedWinner} by ${p.predictedMargin}`}
                 sx={{
-                  bgcolor: p.competitionColor || "primary.main",
+                  bgcolor: p.color || "primary.main",
                   color: "white",
                 }}
               />
-              <Typography>Margin: {p.margin || "—"}</Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              {dayjs(p.kickoff).format("dddd, D MMMM YYYY")}
-            </Typography>
-          </Paper>
-        ))
-      )}
-
-      {/* Jump to Now button */}
-      {filteredPredictions.length > 0 && (
-        <Box display="flex" justifyContent="center" mt={2}>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              const upcoming = filteredPredictions.find(
-                (p) => new Date(p.kickoff) > new Date()
-              );
-              if (upcoming) {
-                const el = document.getElementById(`match-${upcoming.matchId}`);
-                if (el) el.scrollIntoView({ behavior: "smooth" });
-              }
-            }}
-          >
-            Jump to Now
-          </Button>
-        </Box>
-      )}
+            </Box>
+          ))}
+        </Paper>
+      ))}
     </Container>
   );
 }

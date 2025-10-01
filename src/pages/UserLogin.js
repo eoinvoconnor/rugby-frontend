@@ -1,53 +1,72 @@
+// src/pages/UserLogin.js
 import React, { useState } from "react";
-import {
-  Container,
-  TextField,
-  Button,
-  Paper,
-  Typography,
-  Stack,
-  FormControlLabel,
-  Checkbox,
-  Alert,
-} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
-import apiFetch from "../api/api"; // ✅ fixed import
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Paper,
+  Alert,
+  FormControlLabel,
+  Checkbox,
+} from "@mui/material";
+import { apiFetch } from "../api/api"; // ✅ fixed import
 
 function UserLogin() {
   const navigate = useNavigate();
-  const { loginUser } = useUser();
+  const { setUser } = useUser();
+
   const [email, setEmail] = useState("");
   const [firstname, setFirstname] = useState("");
   const [surname, setSurname] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
-    if (!email || !firstname || !surname) {
-      setError("⚠️ Please fill all fields.");
-      return;
-    }
     setError("");
 
+    if (!email || !firstname || !surname) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
     try {
-      const user = await loginUser(email, firstname, surname, rememberMe);
-      if (user) {
-        navigate("/matches");
-      } else {
-        setError("❌ Login failed.");
+      const res = await apiFetch("/users/login", {
+        method: "POST",
+        body: JSON.stringify({ email, firstname, surname }),
+      });
+
+      if (!res || !res.id) {
+        throw new Error("Login failed");
       }
+
+      setUser(res);
+
+      if (rememberMe) {
+        localStorage.setItem("user", JSON.stringify(res));
+      } else {
+        sessionStorage.setItem("user", JSON.stringify(res));
+      }
+
+      navigate("/matches");
     } catch (err) {
       console.error("❌ Login error:", err);
-      setError("❌ An error occurred. Please try again.");
+      setError("Login failed. Please try again.");
     }
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 4 }}>
-      <Paper sx={{ p: 3 }}>
+    <Box
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      minHeight="80vh"
+    >
+      <Paper elevation={3} sx={{ p: 4, width: 400 }}>
         <Typography variant="h5" gutterBottom>
-          Login
+          Login / Register
         </Typography>
 
         {error && (
@@ -56,41 +75,54 @@ function UserLogin() {
           </Alert>
         )}
 
-        <Stack spacing={2}>
-          <TextField
-            label="First Name"
-            value={firstname}
-            onChange={(e) => setFirstname(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Surname"
-            value={surname}
-            onChange={(e) => setSurname(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Email"
-            value={email}
-            type="email"
-            onChange={(e) => setEmail(e.target.value)}
-            fullWidth
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-            }
-            label="Remember Me"
-          />
-          <Button variant="contained" onClick={handleLogin}>
-            Login
-          </Button>
-        </Stack>
+        <TextField
+          label="Email"
+          type="email"
+          fullWidth
+          margin="normal"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <TextField
+          label="First Name"
+          fullWidth
+          margin="normal"
+          value={firstname}
+          onChange={(e) => setFirstname(e.target.value)}
+        />
+
+        <TextField
+          label="Surname"
+          fullWidth
+          margin="normal"
+          value={surname}
+          onChange={(e) => setSurname(e.target.value)}
+        />
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              color="primary"
+            />
+          }
+          label="Remember me on this device"
+          sx={{ mt: 1 }}
+        />
+
+        <Button
+          variant="contained"
+          color="primary"
+          fullWidth
+          sx={{ mt: 2 }}
+          onClick={handleLogin}
+        >
+          Submit
+        </Button>
       </Paper>
-    </Container>
+    </Box>
   );
 }
 

@@ -1,3 +1,4 @@
+// src/pages/AdminPage.js
 import React, { useEffect, useState } from "react";
 import {
   Container,
@@ -21,7 +22,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { DataGrid } from "@mui/x-data-grid";
-import apiFetch from "../api/api"; // ✅ fixed import
+import { apiFetch } from "../api/api"; // ✅ fixed import
 
 function AdminPage() {
   const [matches, setMatches] = useState([]);
@@ -39,16 +40,38 @@ function AdminPage() {
   });
 
   const [editMode, setEditMode] = useState(false);
+  const [filter, setFilter] = useState("ALL");
 
   // 🔹 Standard competitions with names + URLs
   const standardCompetitions = [
-    { name: "Top14", url: "webcal://ics.ecal.com/ecal-sub/68c1b84538582c00081bd07b/Ligue%20Nationale%20De%20Rugby.ics" },
-    { name: "Premiership", url: "webcal://ics.ecal.com/ecal-sub/68b80d5c0fb910000876112c/Premiership%20Rugby%20.ics" },
-    { name: "URC", url: "webcal://ics.ecal.com/ecal-sub/68b810331c6d630008c085ef/United%20Rugby%20Championship.ics" },
-    { name: "Champions Cup", url: "webcal://ics.ecal.com/ecal-sub/68b810640fb9100008761171/EPCR.ics" },
-    { name: "Challenge Cup", url: "webcal://ics.ecal.com/ecal-sub/68b8108f1c6d630008c085fc/EPCR.ics" },
-    { name: "Autumn Internationals", url: "webcal://ics.ecal.com/ecal-sub/68d28502c4f7f8000894f5b2/Six%20Nations%20Rugby.ics" },
-    { name: "Six Nations", url: "webcal://ics.ecal.com/ecal-sub/68d28557f028450008896c2a/Six%20Nations%20Rugby.ics" },
+    {
+      name: "Top14",
+      url: "webcal://ics.ecal.com/ecal-sub/68c1b84538582c00081bd07b/Ligue%20Nationale%20De%20Rugby.ics",
+    },
+    {
+      name: "Premiership",
+      url: "webcal://ics.ecal.com/ecal-sub/68b80d5c0fb910000876112c/Premiership%20Rugby%20.ics",
+    },
+    {
+      name: "URC",
+      url: "webcal://ics.ecal.com/ecal-sub/68b810331c6d630008c085ef/United%20Rugby%20Championship.ics",
+    },
+    {
+      name: "Champions Cup",
+      url: "webcal://ics.ecal.com/ecal-sub/68b810640fb9100008761171/EPCR.ics",
+    },
+    {
+      name: "Challenge Cup",
+      url: "webcal://ics.ecal.com/ecal-sub/68b8108f1c6d630008c085fc/EPCR.ics",
+    },
+    {
+      name: "Autumn Internationals",
+      url: "webcal://ics.ecal.com/ecal-sub/68d28502c4f7f8000894f5b2/Six%20Nations%20Rugby.ics",
+    },
+    {
+      name: "Six Nations",
+      url: "webcal://ics.ecal.com/ecal-sub/68d28557f028450008896c2a/Six%20Nations%20Rugby.ics",
+    },
   ];
 
   useEffect(() => {
@@ -57,10 +80,10 @@ function AdminPage() {
 
   async function loadData() {
     try {
-      const comps = await apiFetch("/api/competitions");
+      const comps = await apiFetch("/competitions");
       setCompetitions(comps);
 
-      const matchList = await apiFetch("/api/matches");
+      const matchList = await apiFetch("/matches");
       const withPreds = matchList.map((m) => ({ ...m, predictionsCount: 0 }));
       setMatches(withPreds);
     } catch (err) {
@@ -71,7 +94,7 @@ function AdminPage() {
   // 🔄 Recalculate results + leaderboard via server scrape
   async function handleRecalculate() {
     try {
-      const result = await apiFetch("/api/admin/update-results", {
+      const result = await apiFetch("/admin/update-results", {
         method: "POST",
       });
       setSnackbar({
@@ -93,7 +116,7 @@ function AdminPage() {
   // 🚨 Force logout all users
   async function handleForceLogout() {
     try {
-      const res = await apiFetch("/api/admin/force-logout", {
+      const res = await apiFetch("/admin/force-logout", {
         method: "POST",
       });
       setSnackbar({
@@ -118,7 +141,7 @@ function AdminPage() {
         safeUrl = safeUrl.replace("webcal://", "https://");
       }
 
-      const result = await apiFetch("/api/competitions", {
+      const result = await apiFetch("/competitions", {
         method: "POST",
         body: JSON.stringify({
           name: newComp.name,
@@ -149,7 +172,7 @@ function AdminPage() {
 
   async function handleUpdateCompetition(c) {
     try {
-      await apiFetch(`/api/competitions/${c.id}`, {
+      await apiFetch(`/competitions/${c.id}`, {
         method: "PUT",
         body: JSON.stringify(c),
       });
@@ -166,7 +189,7 @@ function AdminPage() {
 
   async function handleRefreshCompetition(compId) {
     try {
-      await apiFetch(`/api/competitions/${compId}/refresh`, { method: "POST" });
+      await apiFetch(`/competitions/${compId}/refresh`, { method: "POST" });
       loadData();
       setSnackbar({
         open: true,
@@ -181,7 +204,7 @@ function AdminPage() {
   async function handleDeleteCompetition(compId) {
     if (!window.confirm("Delete this competition?")) return;
     try {
-      await apiFetch(`/api/competitions/${compId}`, { method: "DELETE" });
+      await apiFetch(`/competitions/${compId}`, { method: "DELETE" });
       loadData();
       setSnackbar({
         open: true,
@@ -199,7 +222,7 @@ function AdminPage() {
     if (!match) return;
     const updated = { ...match, result: { ...match.result, winner } };
     try {
-      await apiFetch(`/api/matches/${matchId}`, {
+      await apiFetch(`/matches/${matchId}`, {
         method: "PUT",
         body: JSON.stringify(updated),
       });
@@ -212,9 +235,12 @@ function AdminPage() {
   async function handleSetMargin(matchId, margin) {
     const match = matches.find((m) => m.id === matchId);
     if (!match) return;
-    const updated = { ...match, result: { ...match.result, margin: parseInt(margin, 10) || null } };
+    const updated = {
+      ...match,
+      result: { ...match.result, margin: parseInt(margin, 10) || null },
+    };
     try {
-      await apiFetch(`/api/matches/${matchId}`, {
+      await apiFetch(`/matches/${matchId}`, {
         method: "PUT",
         body: JSON.stringify(updated),
       });
@@ -223,6 +249,11 @@ function AdminPage() {
       console.error("❌ Error updating margin:", err);
     }
   }
+
+  const filteredMatches =
+    filter === "ALL"
+      ? matches
+      : matches.filter((m) => m.competitionName === filter);
 
   const columns = [
     {
@@ -250,7 +281,11 @@ function AdminPage() {
           <Chip
             label={params.row.teamA}
             clickable={editMode}
-            onClick={editMode ? () => handleSetWinner(params.row.id, params.row.teamA) : undefined}
+            onClick={
+              editMode
+                ? () => handleSetWinner(params.row.id, params.row.teamA)
+                : undefined
+            }
             sx={{
               fontWeight: isWinner ? "bold" : "normal",
               bgcolor: isWinner ? "success.main" : undefined,
@@ -270,7 +305,11 @@ function AdminPage() {
           <Chip
             label={params.row.teamB}
             clickable={editMode}
-            onClick={editMode ? () => handleSetWinner(params.row.id, params.row.teamB) : undefined}
+            onClick={
+              editMode
+                ? () => handleSetWinner(params.row.id, params.row.teamB)
+                : undefined
+            }
             sx={{
               fontWeight: isWinner ? "bold" : "normal",
               bgcolor: isWinner ? "success.main" : undefined,
@@ -284,7 +323,8 @@ function AdminPage() {
       field: "kickoff",
       headerName: "Date/Time",
       flex: 1.2,
-      valueFormatter: (params) => new Date(params.value).toLocaleString("en-GB"),
+      valueFormatter: (params) =>
+        new Date(params.value).toLocaleString("en-GB"),
     },
     {
       field: "margin",
@@ -303,12 +343,16 @@ function AdminPage() {
           params.row.result?.margin || "—"
         ),
     },
-    { field: "predictionsCount", headerName: "Predictions Submitted", flex: 1 },
+    {
+      field: "predictionsCount",
+      headerName: "Predictions Submitted",
+      flex: 1,
+    },
   ];
 
   async function handleRowUpdate(newRow) {
     try {
-      return await apiFetch(`/api/matches/${newRow.id}`, {
+      return await apiFetch(`/matches/${newRow.id}`, {
         method: "PUT",
         body: JSON.stringify(newRow),
       });
@@ -338,6 +382,27 @@ function AdminPage() {
         </Tooltip>
       </Stack>
 
+      {/* 📌 Competition Filter */}
+      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
+        <Chip
+          label="ALL"
+          color={filter === "ALL" ? "primary" : "default"}
+          onClick={() => setFilter("ALL")}
+        />
+        {competitions.map((c) => (
+          <Chip
+            key={c.id}
+            label={c.name}
+            onClick={() => setFilter(c.name)}
+            sx={{
+              bgcolor: c.color || "#666",
+              color: "white",
+              opacity: filter === "ALL" || filter === c.name ? 1 : 0.5,
+            }}
+          />
+        ))}
+      </Stack>
+
       {/* 📌 Competitions Accordion */}
       <Accordion defaultExpanded={false} sx={{ mb: 3 }}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -365,7 +430,9 @@ function AdminPage() {
                   onChange={(e) =>
                     setCompetitions((prev) =>
                       prev.map((comp) =>
-                        comp.id === c.id ? { ...comp, name: e.target.value } : comp
+                        comp.id === c.id
+                          ? { ...comp, name: e.target.value }
+                          : comp
                       )
                     )
                   }
@@ -377,7 +444,9 @@ function AdminPage() {
                   onChange={(e) =>
                     setCompetitions((prev) =>
                       prev.map((comp) =>
-                        comp.id === c.id ? { ...comp, url: e.target.value } : comp
+                        comp.id === c.id
+                          ? { ...comp, url: e.target.value }
+                          : comp
                       )
                     )
                   }
@@ -390,7 +459,9 @@ function AdminPage() {
                   onChange={(e) =>
                     setCompetitions((prev) =>
                       prev.map((comp) =>
-                        comp.id === c.id ? { ...comp, color: e.target.value } : comp
+                        comp.id === c.id
+                          ? { ...comp, color: e.target.value }
+                          : comp
                       )
                     )
                   }
@@ -473,13 +544,18 @@ function AdminPage() {
       {/* 📋 Matches Table */}
       <Paper sx={{ height: 600 }}>
         <DataGrid
-          rows={matches}
+          rows={filteredMatches}
           columns={columns}
           getRowId={(row) => row.id}
           processRowUpdate={handleRowUpdate}
           disableRowSelectionOnClick
           experimentalFeatures={{ newEditingApi: true }}
           pageSizeOptions={[10, 25, 50]}
+          initialState={{
+            sorting: {
+              sortModel: [{ field: "kickoff", sort: "asc" }],
+            },
+          }}
         />
       </Paper>
 
