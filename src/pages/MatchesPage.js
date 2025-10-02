@@ -1,232 +1,243 @@
 // src/pages/MatchesPage.js
-import React, { useEffect, useState } from "react";
+
+import React, { useState, useEffect } from "react";
+import dayjs from "dayjs";
 import {
-  Container,
-  Typography,
-  Chip,
+  Box,
   Button,
-  TextField,
+  Chip,
   Grid,
-  Switch,
-  FormControlLabel,
+  Paper,
+  Typography,
+  TextField,
 } from "@mui/material";
+import SportsRugbyIcon from "@mui/icons-material/SportsRugby";
 import LockIcon from "@mui/icons-material/Lock";
 import { apiFetch } from "../api/api";
 
-export default function MatchesPage() {
+// Competition colors
+const competitionColors = {
+  Premiership: "#003087",
+  URC: "#4CAF50",
+  "Top 14": "#FFD700",
+  SixNations: "#D32F2F",
+  default: "#9E9E9E",
+};
+
+function MatchesPage() {
   const [matches, setMatches] = useState([]);
   const [competitions, setCompetitions] = useState([]);
   const [predictions, setPredictions] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("ALL");
   const [hideCompleted, setHideCompleted] = useState(false);
 
+  // Fetch matches + competitions
   useEffect(() => {
-    async function loadData() {
+    const loadData = async () => {
       try {
         const comps = await apiFetch("/competitions");
-        const mats = await apiFetch("/matches");
         setCompetitions(comps);
-        setMatches(mats);
+
+        const data = await apiFetch("/matches");
+        // ✅ Sort matches by kickoff ascending
+        const sorted = data.sort(
+          (a, b) => new Date(a.kickoff) - new Date(b.kickoff)
+        );
+        setMatches(sorted);
       } catch (err) {
-        console.error("❌ Failed to fetch matches:", err);
-      } finally {
-        setLoading(false);
+        console.error("❌ Failed to load matches:", err);
       }
-    }
+    };
     loadData();
   }, []);
 
-  const handlePredictionChange = (matchId, team, margin) => {
-    setPredictions({
-      ...predictions,
+  const handlePrediction = (matchId, team, margin) => {
+    setPredictions((prev) => ({
+      ...prev,
       [matchId]: { team, margin },
-    });
+    }));
   };
 
-  const handleSubmit = async (dayMatches) => {
+  const handleSubmit = async (clusterMatches) => {
     try {
-      await apiFetch("/predictions", {
-        method: "POST",
-        body: JSON.stringify(
-          dayMatches.map((m) => ({
-            matchId: m.id,
-            prediction: predictions[m.id] || null,
-          }))
-        ),
-      });
-      alert("✅ Predictions submitted!");
+      const payload = clusterMatches
+        .filter((m) => predictions[m.id])
+        .map((m) => ({
+          matchId: m.id,
+          ...predictions[m.id],
+        }));
+
+      if (payload.length > 0) {
+        await apiFetch("/predictions", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        alert("✅ Predictions saved!");
+      }
     } catch (err) {
-      console.error("❌ Error submitting predictions:", err);
-      alert("Failed to submit predictions");
+      console.error("❌ Failed to submit predictions:", err);
+      alert("❌ Failed to submit predictions");
     }
   };
 
-  if (loading) return <Typography>Loading matches...</Typography>;
-
-  // Group matches by *day* only (ignores time)
-  const matchesByDate = matches.reduce((acc, match) => {
-    const dateKey = new Date(match.kickoff).toLocaleDateString("en-GB", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(match);
+  // Group matches by day
+  const groupedByDay = matches.reduce((acc, match) => {
+    const day = dayjs(match.kickoff).format("YYYY-MM-DD");
+    if (!acc[day]) acc[day] = [];
+    acc[day].push(match);
     return acc;
   }, {});
 
+  // Apply filters
+  const filteredGroups = Object.entries(groupedByDay).filter(([day, dayMatches]) => {
+    const visibleMatches = dayMatches.filter((m) => {
+      const isPast = new Date(m.kickoff) < new Date();
+      if (hideCompleted && isPast) return false;
+      if (filter !== "ALL" && m.competitionName !== filter) return false;
+      return true;
+    });
+    return visibleMatches.length > 0;
+  });
+
   return (
-    <Container>
-      <Typography variant="h4" gutterBottom>
-        Matches
-      </Typography>
-
-      <FormControlLabel
-        control={
-          <Switch
-            checked={hideCompleted}
-            onChange={(e) => setHideCompleted(e.target.checked)}
+    <Box p={2}>
+      {/* Competition Filter Chips */}
+      <Box mb={2} display="flex" gap={1} flexWrap="wrap">
+        <Chip
+          label="ALL"
+          color={filter === "ALL" ? "primary" : "default"}
+          onClick={() => setFilter("ALL")}
+        />
+        {competitions.map((comp) => (
+          <Chip
+            key={comp.id}
+            label={comp.name}
+            onClick={() => setFilter(comp.name)}
+            sx={{
+              backgroundColor:
+                filter === comp.name
+                  ? competitionColors[comp.name] || competitionColors.default
+                  : "#E0E0E0",
+              color: filter === comp.name ? "#fff" : "#000",
+            }}
           />
-        }
-        label="Hide Completed Matches"
-      />
+        ))}
+        <Chip
+          label={hideCompleted ? "Show Completed" : "Hide Completed"}
+          onClick={() => setHideCompleted(!hideCompleted)}
+        />
+      </Box>
 
-      {Object.entries(matchesByDate).map(([date, dayMatches]) => {
-        const filteredMatches = hideCompleted
-          ? dayMatches.filter((m) => new Date(m.kickoff) > new Date())
-          : dayMatches;
+      {/* Match Clusters by Day */}
+      {filteredGroups.map(([day, dayMatches]) => {
+        const visibleMatches = dayMatches.filter((m) => {
+          const isPast = new Date(m.kickoff) < new Date();
+          if (hideCompleted && isPast) return false;
+          if (filter !== "ALL" && m.competitionName !== filter) return false;
+          return true;
+        });
 
-        if (filteredMatches.length === 0) return null; // skip empty days
+        if (visibleMatches.length === 0) return null;
 
         return (
-          <div key={date} style={{ marginBottom: "2rem" }}>
-            <Typography variant="h6">{date}</Typography>
+          <Paper key={day} sx={{ mb: 3, p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              {dayjs(day).format("dddd, MMMM D")}
+            </Typography>
+            <Grid container spacing={2}>
+              {visibleMatches.map((match) => {
+                const isPast = new Date(match.kickoff) < new Date();
+                const prediction = predictions[match.id] || {};
+                const color =
+                  competitionColors[match.competitionName] ||
+                  competitionColors.default;
 
-            {/* Competition chip for first match in this date cluster */}
-            {filteredMatches.length > 0 && (
-              <Chip
-                label={
-                  competitions.find(
-                    (c) => c.id === filteredMatches[0].competitionId
-                  )?.name || "Unknown"
-                }
-                style={{
-                  backgroundColor:
-                    competitions.find(
-                      (c) => c.id === filteredMatches[0].competitionId
-                    )?.color || "#ccc",
-                  color: "white",
-                  margin: "10px 0",
-                  fontWeight: "bold",
-                }}
-              />
-            )}
-
-            {filteredMatches.map((match) => {
-              const isLocked = new Date(match.kickoff) < new Date();
-
-              return (
-                <Grid
-                  key={match.id}
-                  container
-                  alignItems="center"
-                  spacing={1}
-                  style={{
-                    marginBottom: "10px",
-                    borderLeft: `6px solid ${
-                      competitions.find((c) => c.id === match.competitionId)
-                        ?.color || "#ccc"
-                    }`,
-                    paddingLeft: "10px",
-                    opacity: isLocked ? 0.6 : 1,
-                  }}
-                >
-                  {isLocked && (
-                    <Grid item>
-                      <LockIcon style={{ color: "gray" }} />
-                    </Grid>
-                  )}
-
-                  {/* Team A */}
-                  <Grid item>
-                    <Chip
-                      label={match.teamA}
-                      clickable={!isLocked}
-                      onClick={() =>
-                        !isLocked && handlePredictionChange(match.id, "A", 0)
-                      }
-                      style={{
-                        backgroundColor:
-                          predictions[match.id]?.team === "A"
-                            ? competitions.find(
-                                (c) => c.id === match.competitionId
-                              )?.color || "#1976d2"
-                            : "#e0e0e0",
-                        color:
-                          predictions[match.id]?.team === "A"
-                            ? "white"
-                            : "black",
-                      }}
-                    />
+                return (
+                  <Grid
+                    item
+                    xs={12}
+                    key={match.id}
+                    sx={{
+                      borderLeft: `8px solid ${color}`,
+                      opacity: isPast ? 0.6 : 1,
+                      position: "relative",
+                    }}
+                  >
+                    {isPast && (
+                      <LockIcon
+                        sx={{
+                          position: "absolute",
+                          left: 8,
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          color: "#757575",
+                        }}
+                      />
+                    )}
+                    <Box display="flex" alignItems="center" gap={2} p={1}>
+                      {/* Team A */}
+                      <Chip
+                        label={match.teamA}
+                        onClick={() =>
+                          !isPast &&
+                          handlePrediction(match.id, "A", prediction.margin || 0)
+                        }
+                        sx={{
+                          backgroundColor:
+                            prediction.team === "A" ? color : "#E0E0E0",
+                          color: prediction.team === "A" ? "#fff" : "#000",
+                        }}
+                      />
+                      <Typography variant="body1">vs</Typography>
+                      {/* Team B */}
+                      <Chip
+                        label={match.teamB}
+                        onClick={() =>
+                          !isPast &&
+                          handlePrediction(match.id, "B", prediction.margin || 0)
+                        }
+                        sx={{
+                          backgroundColor:
+                            prediction.team === "B" ? color : "#E0E0E0",
+                          color: prediction.team === "B" ? "#fff" : "#000",
+                        }}
+                      />
+                      {/* Margin input */}
+                      <TextField
+                        type="number"
+                        size="small"
+                        label="Margin"
+                        value={prediction.margin || ""}
+                        onChange={(e) =>
+                          handlePrediction(
+                            match.id,
+                            prediction.team,
+                            parseInt(e.target.value) || 0
+                          )
+                        }
+                        disabled={isPast}
+                        sx={{ width: 80 }}
+                      />
+                    </Box>
                   </Grid>
-
-                  {/* Team B */}
-                  <Grid item>
-                    <Chip
-                      label={match.teamB}
-                      clickable={!isLocked}
-                      onClick={() =>
-                        !isLocked && handlePredictionChange(match.id, "B", 0)
-                      }
-                      style={{
-                        backgroundColor:
-                          predictions[match.id]?.team === "B"
-                            ? competitions.find(
-                                (c) => c.id === match.competitionId
-                              )?.color || "#1976d2"
-                            : "#e0e0e0",
-                        color:
-                          predictions[match.id]?.team === "B"
-                            ? "white"
-                            : "black",
-                      }}
-                    />
-                  </Grid>
-
-                  {/* Margin */}
-                  <Grid item>
-                    <TextField
-                      type="number"
-                      size="small"
-                      placeholder="Margin"
-                      value={predictions[match.id]?.margin || ""}
-                      onChange={(e) =>
-                        handlePredictionChange(
-                          match.id,
-                          predictions[match.id]?.team || "A",
-                          parseInt(e.target.value, 10) || 0
-                        )
-                      }
-                      disabled={isLocked}
-                      style={{ width: "80px" }}
-                    />
-                  </Grid>
-                </Grid>
-              );
-            })}
-
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => handleSubmit(filteredMatches)}
-              style={{ marginTop: "10px" }}
-            >
-              Submit Predictions
-            </Button>
-          </div>
+                );
+              })}
+            </Grid>
+            {/* Cluster Submit */}
+            <Box mt={2} textAlign="right">
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => handleSubmit(dayMatches)}
+              >
+                Submit Predictions
+              </Button>
+            </Box>
+          </Paper>
         );
       })}
-    </Container>
+    </Box>
   );
 }
+
+export default MatchesPage;
