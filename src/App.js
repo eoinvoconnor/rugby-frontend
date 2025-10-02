@@ -137,7 +137,7 @@ function App() {
           </AppBar>
 
           {/* Side Drawer */}
-          <<Box
+          <Box
   component="nav"
   sx={{ width: 240, flexShrink: 0 }}
 >
