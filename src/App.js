@@ -1,6 +1,6 @@
 // src/App.js
 import React, { useState, useEffect, useContext } from "react";
-import { BrowserRouter as Router, Route, Routes, Link, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Link, Navigate, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -33,12 +33,10 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   const { user } = useContext(UserContext);
 
   if (!user) {
-    // Not logged in → redirect to login
     return <Navigate to="/login" replace />;
   }
 
   if (requireAdmin && !user.isAdmin) {
-    // Logged in but not admin → redirect to home
     return <Navigate to="/" replace />;
   }
 
@@ -50,10 +48,18 @@ function AppContent() {
   const [backendStatus, setBackendStatus] = useState("checking");
   const [pageTitle, setPageTitle] = useState("Matches");
 
-  const { user } = useContext(UserContext);
+  const { user, setUser } = useContext(UserContext);
+  const navigate = useNavigate();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  // ✅ Logout function
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem("user");
+    navigate("/login");
   };
 
   // ✅ Build menu items dynamically
@@ -72,6 +78,7 @@ function AppContent() {
     if (user.isAdmin) {
       menuItems.push({ text: "Admin", path: "/admin", title: "Admin" });
     }
+    menuItems.push({ text: "Logout", action: handleLogout });
   }
 
   // ✅ Backend health check
@@ -104,11 +111,15 @@ function AppContent() {
           <ListItem
             button
             key={item.text}
-            component={Link}
-            to={item.path}
+            component={item.path ? Link : "button"}
+            to={item.path || undefined}
             onClick={() => {
-              setPageTitle(item.title);
-              setMobileOpen(false);
+              if (item.action) {
+                item.action();
+              } else {
+                setPageTitle(item.title);
+                setMobileOpen(false);
+              }
             }}
           >
             <ListItemText primary={item.text} />
