@@ -1,16 +1,17 @@
 // src/pages/MatchesPage.js
-import React, { useEffect, useState } from "react";
+
+import React, { useState, useEffect } from "react";
+import dayjs from "dayjs";
 import {
-  Container,
-  Typography,
-  Paper,
   Box,
   Button,
   Chip,
+  CircularProgress,
+  Container,
   Stack,
   TextField,
+  Typography,
 } from "@mui/material";
-import dayjs from "dayjs";
 import LockIcon from "@mui/icons-material/Lock";
 import { apiFetch } from "../api/api";
 import { useUser } from "../context/UserContext";
@@ -19,25 +20,38 @@ function MatchesPage() {
   const { user } = useUser();
   const [matches, setMatches] = useState([]);
   const [competitions, setCompetitions] = useState([]);
-  const [filter, setFilter] = useState("ALL");
   const [predictions, setPredictions] = useState({});
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("ALL");
 
+  // Load competitions + matches
   useEffect(() => {
-    loadMatches();
-  }, []);
+    async function loadData() {
+      try {
+        const comps = await apiFetch("/competitions");
+        setCompetitions(comps);
 
-  async function loadMatches() {
-    try {
-      const comps = await apiFetch("/competitions");
-      setCompetitions(comps);
+        const data = await apiFetch("/matches");
+        // Sort by kickoff ascending
+        data.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+        setMatches(data);
 
-      const data = await apiFetch("/matches");
-      setMatches(data);
-    } catch (err) {
-      console.error("❌ Failed to load matches:", err);
+        if (user) {
+          const preds = await apiFetch(`/predictions/${user.id}`);
+          const predMap = {};
+          preds.forEach((p) => {
+            predMap[p.matchId] = { team: p.team, margin: p.margin };
+          });
+          setPredictions(predMap);
+        }
+      } catch (err) {
+        console.error("❌ Failed to load matches:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }
+    loadData();
+  }, [user]);
 
   const handlePredictionChange = (matchId, team, margin) => {
     setPredictions((prev) => ({
@@ -46,64 +60,55 @@ function MatchesPage() {
     }));
   };
 
-  const handleSubmit = async (clusterMatches) => {
-    const toSubmit = clusterMatches
-      .filter((m) => predictions[m._id])
-      .map((m) => ({
-        matchId: m._id,
-        ...predictions[m._id],
-      }));
-
-    if (!toSubmit.length) return;
-
+  const handleSubmitCluster = async (cluster) => {
     try {
-      await apiFetch("/predictions", {
-        method: "POST",
-        body: JSON.stringify({ predictions: toSubmit }),
-      });
-      alert("Predictions submitted!");
+      const payload = cluster.matches
+        .filter((m) => predictions[m._id])
+        .map((m) => ({
+          matchId: m._id,
+          userId: user.id,
+          ...predictions[m._id],
+        }));
+
+      if (payload.length > 0) {
+        await apiFetch("/predictions", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        alert("Predictions saved!");
+      }
     } catch (err) {
-      console.error("❌ Failed to submit predictions:", err);
+      console.error("❌ Failed to save predictions:", err);
     }
   };
 
-  // Filtering
-  const filteredMatches =
-    filter === "ALL"
-      ? matches
-      : matches.filter((m) => m.competition === filter);
-
-  const upcomingMatches = filteredMatches.filter((m) => {
-    const isPast = dayjs(m.kickoff).isBefore(dayjs());
-    return hideCompleted ? !isPast : true;
-  });
-
-  // Group by competition + kickoff date
-  const grouped = upcomingMatches.reduce((acc, match) => {
-    const dateKey = dayjs(match.kickoff).format("YYYY-MM-DD");
-    const compKey = match.competition;
-    const clusterKey = `${compKey}_${dateKey}`;
-
-    if (!acc[clusterKey]) {
-      acc[clusterKey] = { competition: compKey, date: dateKey, matches: [] };
-    }
-    acc[clusterKey].matches.push(match);
+  // Group matches by date + competition
+  const groupedMatches = matches.reduce((acc, m) => {
+    const dateKey = dayjs(m.kickoff).format("YYYY-MM-DD");
+    if (!acc[dateKey]) acc[dateKey] = {};
+    if (!acc[dateKey][m.competition]) acc[dateKey][m.competition] = [];
+    acc[dateKey][m.competition].push(m);
     return acc;
   }, {});
 
-  const sortedClusters = Object.values(grouped).sort((a, b) => {
-    if (a.date === b.date) return a.competition.localeCompare(b.competition);
-    return new Date(a.date) - new Date(b.date);
-  });
+  // Apply filter
+  const filteredClusters = Object.entries(groupedMatches).map(
+    ([date, comps]) => ({
+      date,
+      competitions: Object.entries(comps)
+        .filter(
+          ([comp]) => filter === "ALL" || comp.toLowerCase() === filter.toLowerCase()
+        )
+        .map(([comp, matches]) => ({ comp, matches })),
+    })
+  );
+
+  if (loading) return <CircularProgress />;
 
   return (
-    <Container sx={{ mt: 2 }}>
-      <Typography variant="h5" gutterBottom>
-        Matches
-      </Typography>
-
-      {/* Competition Filter */}
-      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
+    <Container>
+      {/* Competition Filter Chips */}
+      <Stack direction="row" spacing={1} mb={2} sx={{ flexWrap: "wrap" }}>
         <Chip
           label="ALL"
           color={filter === "ALL" ? "primary" : "default"}
@@ -115,98 +120,129 @@ function MatchesPage() {
             label={c.name}
             onClick={() => setFilter(c.name)}
             sx={{
-              bgcolor: c.color || "#666",
-              color: "white",
-              opacity: filter === "ALL" || filter === c.name ? 1 : 0.5,
+              bgcolor:
+                filter === c.name ? c.color || "primary.main" : "default",
+              color: filter === c.name ? "white" : "black",
             }}
           />
         ))}
       </Stack>
 
-      {sortedClusters.map((cluster) => (
-        <Paper key={cluster.competition + cluster.date} sx={{ p: 2, mb: 3 }}>
+      {/* Clusters */}
+      {filteredClusters.map((cluster) => (
+        <Box key={cluster.date} sx={{ mb: 4 }}>
           <Typography variant="h6" gutterBottom>
-            {cluster.competition} —{" "}
             {dayjs(cluster.date).format("dddd, D MMMM YYYY")}
           </Typography>
 
-          {cluster.matches.map((m) => {
-            const isPast = dayjs(m.kickoff).isBefore(dayjs());
-            const pred = predictions[m._id] || {};
-            const comp = competitions.find((c) => c.name === m.competition);
+          {cluster.competitions.map(({ comp, matches }) => {
+            const compData = competitions.find((c) => c.name === comp);
 
             return (
               <Box
-                key={m._id}
+                key={comp}
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  p: 1,
-                  borderLeft: `8px solid ${comp?.color || "#ccc"}`,
-                  mb: 1,
-                  bgcolor: isPast ? "#f5f5f5" : "white",
+                  border: `2px solid ${compData?.color || "#ccc"}`,
+                  borderRadius: 2,
+                  p: 2,
+                  mb: 3,
                 }}
               >
-                {isPast ? (
-                  <LockIcon sx={{ color: "grey", mr: 2 }} />
-                ) : (
-                  <>
-                    <Stack direction="row" spacing={1}>
-                      <Chip
-                        label={m.teamA}
-                        sx={{
-                          bgcolor:
-                            pred.team === m.teamA
-                              ? comp?.color || "primary.main"
-                              : "default",
-                          color: pred.team === m.teamA ? "white" : "black",
-                        }}
-                        onClick={() =>
-                          handlePredictionChange(m._id, m.teamA, pred.margin)
+                <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                  {comp}
+                </Typography>
+
+                {matches.map((m) => {
+                  const isPast = dayjs(m.kickoff).isBefore(dayjs());
+                  const pred = predictions[m._id] || {};
+
+                  return (
+                    <Box
+                      key={m._id}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        p: 1,
+                        borderLeft: `8px solid ${compData?.color || "#ccc"}`,
+                        mb: 1,
+                        bgcolor: isPast ? "#f5f5f5" : "white",
+                      }}
+                    >
+                      {isPast && <LockIcon sx={{ color: "grey", mr: 2 }} />}
+
+                      <Stack direction="row" spacing={1}>
+                        <Chip
+                          label={m.teamA}
+                          disabled={isPast}
+                          sx={{
+                            bgcolor:
+                              pred.team === m.teamA
+                                ? compData?.color || "primary.main"
+                                : "default",
+                            color: pred.team === m.teamA ? "white" : "black",
+                          }}
+                          onClick={() =>
+                            !isPast &&
+                            handlePredictionChange(
+                              m._id,
+                              m.teamA,
+                              pred.margin
+                            )
+                          }
+                        />
+                        <Chip
+                          label={m.teamB}
+                          disabled={isPast}
+                          sx={{
+                            bgcolor:
+                              pred.team === m.teamB
+                                ? compData?.color || "primary.main"
+                                : "default",
+                            color: pred.team === m.teamB ? "white" : "black",
+                          }}
+                          onClick={() =>
+                            !isPast &&
+                            handlePredictionChange(
+                              m._id,
+                              m.teamB,
+                              pred.margin
+                            )
+                          }
+                        />
+                      </Stack>
+
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={pred.margin || ""}
+                        disabled={isPast}
+                        onChange={(e) =>
+                          handlePredictionChange(
+                            m._id,
+                            pred.team,
+                            e.target.value
+                          )
                         }
+                        sx={{ width: 70, ml: 2 }}
                       />
-                      <Chip
-                        label={m.teamB}
-                        sx={{
-                          bgcolor:
-                            pred.team === m.teamB
-                              ? comp?.color || "primary.main"
-                              : "default",
-                          color: pred.team === m.teamB ? "white" : "black",
-                        }}
-                        onClick={() =>
-                          handlePredictionChange(m._id, m.teamB, pred.margin)
-                        }
-                      />
-                    </Stack>
-                    <TextField
-                      type="number"
-                      size="small"
-                      value={pred.margin || ""}
-                      onChange={(e) =>
-                        handlePredictionChange(m._id, pred.team, e.target.value)
-                      }
-                      sx={{ width: 70, ml: 2 }}
-                    />
-                  </>
+                    </Box>
+                  );
+                })}
+
+                {/* Submit button per competition cluster */}
+                {user && (
+                  <Button
+                    variant="contained"
+                    onClick={() => handleSubmitCluster({ matches })}
+                    sx={{ mt: 2 }}
+                  >
+                    Submit Predictions
+                  </Button>
                 )}
               </Box>
             );
           })}
-
-          {/* Cluster Submit */}
-          <Box sx={{ textAlign: "right", mt: 1 }}>
-            <Button
-              variant="contained"
-              onClick={() => handleSubmit(cluster.matches)}
-              disabled={cluster.matches.every((m) =>
-                dayjs(m.kickoff).isBefore(dayjs())
-              )}
-            >
-              Submit
-            </Button>
-          </Box>
-        </Paper>
+        </Box>
       ))}
     </Container>
   );
