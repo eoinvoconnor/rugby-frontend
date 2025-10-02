@@ -10,6 +10,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemButton,
   IconButton,
   Box,
   Divider,
@@ -74,17 +75,17 @@ function App() {
       <Divider />
       <List>
         {menuItems.map((item) => (
-          <ListItem
-            button
-            key={item.text}
-            component={Link}
-            to={item.path}
-            onClick={() => {
-              setPageTitle(item.title);
-              setMobileOpen(false); // ✅ closes drawer when link is clicked
-            }}
-          >
-            <ListItemText primary={item.text} />
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              component={Link}
+              to={item.path}
+              onClick={() => {
+                setPageTitle(item.title);
+                setMobileOpen(false);
+              }}
+            >
+              <ListItemText primary={item.text} />
+            </ListItemButton>
           </ListItem>
         ))}
       </List>
