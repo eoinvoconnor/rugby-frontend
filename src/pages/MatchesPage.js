@@ -74,13 +74,13 @@ function MatchesPage() {
       : matches.filter((m) => m.competition === filter);
 
   const upcomingMatches = filteredMatches.filter((m) => {
-    const isPast = dayjs(m.date).isBefore(dayjs());
+    const isPast = dayjs(m.kickoff).isBefore(dayjs());
     return hideCompleted ? !isPast : true;
   });
 
-  // Group by competition + date
+  // Group by competition + kickoff date
   const grouped = upcomingMatches.reduce((acc, match) => {
-    const dateKey = dayjs(match.date).format("YYYY-MM-DD");
+    const dateKey = dayjs(match.kickoff).format("YYYY-MM-DD");
     const compKey = match.competition;
     const clusterKey = `${compKey}_${dateKey}`;
 
@@ -126,11 +126,12 @@ function MatchesPage() {
       {sortedClusters.map((cluster) => (
         <Paper key={cluster.competition + cluster.date} sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            {cluster.competition} — {dayjs(cluster.date).format("dddd, D MMMM YYYY")}
+            {cluster.competition} —{" "}
+            {dayjs(cluster.date).format("dddd, D MMMM YYYY")}
           </Typography>
 
           {cluster.matches.map((m) => {
-            const isPast = dayjs(m.date).isBefore(dayjs());
+            const isPast = dayjs(m.kickoff).isBefore(dayjs());
             const pred = predictions[m._id] || {};
             const comp = competitions.find((c) => c.name === m.competition);
 
@@ -199,7 +200,7 @@ function MatchesPage() {
               variant="contained"
               onClick={() => handleSubmit(cluster.matches)}
               disabled={cluster.matches.every((m) =>
-                dayjs(m.date).isBefore(dayjs())
+                dayjs(m.kickoff).isBefore(dayjs())
               )}
             >
               Submit
