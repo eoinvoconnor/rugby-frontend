@@ -63,16 +63,16 @@ export default function MatchesPage() {
 
   if (loading) return <Typography>Loading matches...</Typography>;
 
-  // Group matches by date
+  // Group matches by *day* only (ignores time)
   const matchesByDate = matches.reduce((acc, match) => {
-    const date = new Date(match.kickoff).toLocaleDateString("en-GB", {
+    const dateKey = new Date(match.kickoff).toLocaleDateString("en-GB", {
       weekday: "long",
       day: "numeric",
       month: "long",
       year: "numeric",
     });
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(match);
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(match);
     return acc;
   }, {});
 
@@ -93,19 +93,17 @@ export default function MatchesPage() {
       />
 
       {Object.entries(matchesByDate).map(([date, dayMatches]) => {
-        // Filter matches if hiding completed
         const filteredMatches = hideCompleted
           ? dayMatches.filter((m) => new Date(m.kickoff) > new Date())
           : dayMatches;
 
-        // Skip this cluster if no matches remain
-        if (filteredMatches.length === 0) return null;
+        if (filteredMatches.length === 0) return null; // skip empty days
 
         return (
           <div key={date} style={{ marginBottom: "2rem" }}>
             <Typography variant="h6">{date}</Typography>
 
-            {/* Competition chip — one per date cluster */}
+            {/* Competition chip for first match in this date cluster */}
             {filteredMatches.length > 0 && (
               <Chip
                 label={
@@ -218,7 +216,6 @@ export default function MatchesPage() {
               );
             })}
 
-            {/* Submit button for this day */}
             <Button
               variant="contained"
               color="primary"
