@@ -24,14 +24,6 @@ function MatchesPage() {
   const [selectedCompetition, setSelectedCompetition] = useState("ALL");
   const [hideCompleted, setHideCompleted] = useState(false);
 
-  // competition colour mapping
-  const competitionColors = {
-    Premiership: "#1976d2",
-    URC: "#2e7d32",
-    "Top 14": "#ed6c02",
-    "Six Nations": "#9c27b0",
-  };
-
   useEffect(() => {
     async function loadData() {
       try {
@@ -69,14 +61,12 @@ function MatchesPage() {
   };
 
   const handleMarginChange = (matchId, value) => {
-    // ✅ Validation: clamp between 1–999, no zero or negatives
     let margin = parseInt(value, 10);
     if (isNaN(margin)) margin = "";
     else {
       if (margin < 1) margin = 1;
       if (margin > 999) margin = 999;
     }
-
     setPredictions((prev) => ({
       ...prev,
       [matchId]: { ...(prev[matchId] || {}), margin },
@@ -113,7 +103,6 @@ function MatchesPage() {
     );
   }
 
-  // group matches by date
   const groupedByDate = matches.reduce((acc, match) => {
     const dateKey = dayjs(match.kickoff).format("YYYY-MM-DD");
     if (!acc[dateKey]) acc[dateKey] = [];
@@ -123,22 +112,25 @@ function MatchesPage() {
 
   return (
     <Box p={2}>
-      {/* Filters */}
+      {/* Competition Filters */}
       <Box mb={2} display="flex" flexWrap="wrap" gap={1}>
         <Chip
           label="ALL"
-          onClick={() => setSelectedCompetition("ALL")}
           color={selectedCompetition === "ALL" ? "primary" : "default"}
+          onClick={() => setSelectedCompetition("ALL")}
         />
-        {competitions.map((comp) => (
+        {competitions.map((c) => (
           <Chip
-            key={comp.id}
-            label={comp.name}
-            onClick={() => setSelectedCompetition(comp.name)}
+            key={c.id}
+            label={c.name}
+            onClick={() => setSelectedCompetition(c.name)}
             sx={{
-              backgroundColor: competitionColors[comp.name] || "grey",
+              bgcolor: c.color || "#666",
               color: "white",
-              opacity: selectedCompetition === comp.name ? 1 : 0.6,
+              opacity:
+                selectedCompetition === "ALL" || selectedCompetition === c.name
+                  ? 1
+                  : 0.5,
             }}
           />
         ))}
@@ -183,6 +175,10 @@ function MatchesPage() {
             {visibleMatches.map((match) => {
               const isPast = new Date(match.kickoff) < now;
               const userPred = predictions[match.id] || {};
+              const compColor =
+                competitions.find((c) => c.name === match.competitionName)
+                  ?.color || "grey";
+
               return (
                 <Box
                   key={match.id}
@@ -192,9 +188,7 @@ function MatchesPage() {
                   mb={1}
                   sx={{
                     border: "1px solid #ccc",
-                    borderLeft: `8px solid ${
-                      competitionColors[match.competitionName] || "grey"
-                    }`,
+                    borderLeft: `8px solid ${compColor}`,
                     opacity: isPast ? 0.6 : 1,
                   }}
                 >
@@ -208,7 +202,7 @@ function MatchesPage() {
                         !isPast && handlePrediction(match.id, match.teamA)
                       }
                       sx={{
-                        backgroundColor: competitionColors[match.competitionName] || "grey",
+                        bgcolor: compColor,
                         opacity: userPred.team === match.teamA ? 1 : 0.5,
                         color: "white",
                       }}
@@ -219,7 +213,7 @@ function MatchesPage() {
                         !isPast && handlePrediction(match.id, match.teamB)
                       }
                       sx={{
-                        backgroundColor: competitionColors[match.competitionName] || "grey",
+                        bgcolor: compColor,
                         opacity: userPred.team === match.teamB ? 1 : 0.5,
                         color: "white",
                       }}
@@ -239,7 +233,6 @@ function MatchesPage() {
               );
             })}
 
-            {/* ✅ Only render button if at least one match is open */}
             {!allCompleted && (
               <Box mt={1} textAlign="right">
                 <Button
