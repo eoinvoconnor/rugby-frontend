@@ -10,6 +10,8 @@ import {
   Paper,
   Typography,
   TextField,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import SportsRugbyIcon from "@mui/icons-material/SportsRugby";
 import LockIcon from "@mui/icons-material/Lock";
@@ -102,7 +104,7 @@ function MatchesPage() {
   return (
     <Box p={2}>
       {/* Competition Filter Chips */}
-      <Box mb={2} display="flex" gap={1} flexWrap="wrap">
+      <Box mb={2} display="flex" gap={1} flexWrap="wrap" alignItems="center">
         <Chip
           label="ALL"
           color={filter === "ALL" ? "primary" : "default"}
@@ -122,9 +124,16 @@ function MatchesPage() {
             }}
           />
         ))}
-        <Chip
-          label={hideCompleted ? "Show Completed" : "Hide Completed"}
-          onClick={() => setHideCompleted(!hideCompleted)}
+        {/* ✅ Toggle switch for hide/show completed */}
+        <FormControlLabel
+          control={
+            <Switch
+              checked={hideCompleted}
+              onChange={() => setHideCompleted(!hideCompleted)}
+              color="primary"
+            />
+          }
+          label={hideCompleted ? "Hide Completed" : "Show Completed"}
         />
       </Box>
 
