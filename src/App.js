@@ -10,7 +10,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemButton,
   IconButton,
   Box,
   Divider,
@@ -36,6 +35,7 @@ function App() {
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+    console.log("📱 Drawer toggle clicked. New state:", !mobileOpen);
   };
 
   // ✅ Drawer navigation items
@@ -75,17 +75,17 @@ function App() {
       <Divider />
       <List>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
-            <ListItemButton
-              component={Link}
-              to={item.path}
-              onClick={() => {
-                setPageTitle(item.title);
-                setMobileOpen(false);
-              }}
-            >
-              <ListItemText primary={item.text} />
-            </ListItemButton>
+          <ListItem
+            button
+            key={item.text}
+            component={Link}
+            to={item.path}
+            onClick={() => {
+              setPageTitle(item.title);
+              setMobileOpen(false);
+            }}
+          >
+            <ListItemText primary={item.text} />
           </ListItem>
         ))}
       </List>
@@ -136,37 +136,35 @@ function App() {
             </Toolbar>
           </AppBar>
 
-{/* Side Drawer */}
-<Box
-  component="nav"
-  sx={{ width: { sm: 240 }, flexShrink: { sm: 0 } }}
->
-  {/* Temporary drawer for mobile (hamburger) */}
-  <Drawer
-    variant="temporary"
-    open={mobileOpen}
-    onClose={handleDrawerToggle}
-    ModalProps={{ keepMounted: true }}
-    sx={{
-      display: { xs: "block", sm: "none" },
-      "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
-    }}
-  >
-    {drawer}
-  </Drawer>
+          {/* Side Drawer */}
+          <Box
+            component="nav"
+            sx={{ width: { sm: 240 }, flexShrink: { sm: 0 } }}
+          >
+            <Drawer
+              variant="temporary"
+              open={mobileOpen}
+              onClose={handleDrawerToggle}
+              ModalProps={{ keepMounted: true }}
+              sx={{
+                display: { xs: "block", sm: "none" },
+                "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
+              }}
+            >
+              {drawer}
+            </Drawer>
+            <Drawer
+              variant="permanent"
+              sx={{
+                display: { xs: "none", sm: "block" },
+                "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
+              }}
+              open
+            >
+              {drawer}
+            </Drawer>
+          </Box>
 
-  {/* Permanent drawer for desktop */}
-  <Drawer
-    variant="permanent"
-    sx={{
-      display: { xs: "none", sm: "block" }, // ✅ hide on small screens
-      "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
-    }}
-    open
-  >
-    {drawer}
-  </Drawer>
-</Box>
           {/* Main Content */}
           <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
             <Toolbar />
