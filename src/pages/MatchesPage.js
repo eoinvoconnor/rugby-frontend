@@ -7,7 +7,6 @@ import {
   CircularProgress,
   Typography,
   TextField,
-  IconButton,
   Switch,
   FormControlLabel,
 } from "@mui/material";
@@ -137,12 +136,9 @@ function MatchesPage() {
             label={comp.name}
             onClick={() => setSelectedCompetition(comp.name)}
             sx={{
-              backgroundColor:
-                selectedCompetition === comp.name
-                  ? competitionColors[comp.name] || "grey"
-                  : "lightgrey",
-              color:
-                selectedCompetition === comp.name ? "white" : "black",
+              backgroundColor: competitionColors[comp.name] || "grey",
+              color: "white",
+              opacity: selectedCompetition === comp.name ? 1 : 0.6,
             }}
           />
         ))}
