@@ -1,79 +1,57 @@
 // src/App.js
-import React, { useEffect, useState } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Link,
-  useNavigate,
-  useLocation,
-} from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
   Typography,
-  IconButton,
+  CssBaseline,
   Drawer,
   List,
   ListItem,
   ListItemText,
+  IconButton,
   Box,
+  Divider,
+  Tooltip,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import SportsRugbyIcon from "@mui/icons-material/SportsRugby";
 
 import MatchesPage from "./pages/MatchesPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import MyPredictionsPage from "./pages/MyPredictionsPage";
-import AdminPage from "./pages/AdminPage";
-import UserLogin from "./pages/UserLogin";
 import UserProfile from "./pages/UserProfile";
-import { useUser } from "./context/UserContext";
+import UserLogin from "./pages/UserLogin";
+import AdminPage from "./pages/AdminPage";
 
-// ✅ Import the base URL from api.js
+import { UserProvider } from "./context/UserContext";
 import { API_BASE_URL } from "./api/api";
 
-// ✅ Map routes → natural page titles
-const pageTitles = {
-  "/": "Matches",
-  "/matches": "Matches",
-  "/leaderboard": "Leaderboard",
-  "/mypredictions": "My predictions",
-  "/profile": "Profile",
-  "/login": "Login",
-  "/admin": "Admin",
-};
-
 function App() {
-  const { user, isAdmin, setUser } = useUser();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [backendStatus, setBackendStatus] = useState("checking");
+  const [pageTitle, setPageTitle] = useState("Matches");
 
-  const navigate = useNavigate();
-  const location = useLocation();
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
-  const pageTitle = pageTitles[location.pathname] || "Rugby Predictions";
+  // ✅ Drawer navigation items
+  const menuItems = [
+    { text: "Matches", path: "/", title: "Matches" },
+    { text: "Leaderboard", path: "/leaderboard", title: "Leaderboard" },
+    { text: "My predictions", path: "/mypredictions", title: "My predictions" },
+    { text: "Profile", path: "/profile", title: "Profile" },
+    { text: "Login", path: "/login", title: "Login" },
+    { text: "Admin", path: "/admin", title: "Admin" },
+  ];
 
-  useEffect(() => {
-    document.title = pageTitle;
-  }, [pageTitle]);
-
-  // ✅ Restore login on startup
-  useEffect(() => {
-    const savedUser =
-      JSON.parse(localStorage.getItem("user")) ||
-      JSON.parse(sessionStorage.getItem("user"));
-
-    if (savedUser && !user) {
-      setUser(savedUser);
-      console.log("🔑 Restored user session:", savedUser.email);
-    }
-  }, [user, setUser]);
-
-  // ✅ Backend connectivity check → use competitions endpoint instead of /hello
+  // ✅ Backend health check
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/competitions`);
+        const res = await fetch(`${API_BASE_URL}/health`);
         if (res.ok) {
           setBackendStatus("online");
           console.log(`✅ Backend reachable at: ${API_BASE_URL}`);
@@ -90,111 +68,118 @@ function App() {
     checkBackend();
   }, []);
 
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("user");
-    setDrawerOpen(false);
-    navigate("/login");
-  };
-
-  return (
-    <Box display="flex" flexDirection="column" minHeight="100vh">
-      {/* Persistent TopBar */}
-      <AppBar position="sticky">
-        <Toolbar>
-          <IconButton
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            onClick={() => setDrawerOpen(true)}
+  const drawer = (
+    <div>
+      <Toolbar />
+      <Divider />
+      <List>
+        {menuItems.map((item) => (
+          <ListItem
+            button
+            key={item.text}
+            component="a"
+            href={item.path}
+            onClick={() => {
+              setPageTitle(item.title);
+              setMobileOpen(false);
+            }}
           >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            {pageTitle}
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
-      {/* Drawer */}
-      <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <List onClick={() => setDrawerOpen(false)}>
-          <ListItem button component={Link} to="/matches">
-            <ListItemText primary="Matches" />
+            <ListItemText primary={item.text} />
           </ListItem>
-          <ListItem button component={Link} to="/leaderboard">
-            <ListItemText primary="Leaderboard" />
-          </ListItem>
-          <ListItem button component={Link} to="/mypredictions">
-            <ListItemText primary="My predictions" />
-          </ListItem>
-
-          {user && (
-            <ListItem button component={Link} to="/profile">
-              <ListItemText primary="Profile" />
-            </ListItem>
-          )}
-
-          {isAdmin && (
-            <ListItem button component={Link} to="/admin">
-              <ListItemText primary="Admin" />
-            </ListItem>
-          )}
-
-          {user ? (
-            <ListItem button onClick={handleLogout}>
-              <ListItemText primary="Logout" />
-            </ListItem>
-          ) : (
-            <ListItem button component={Link} to="/login">
-              <ListItemText primary="Login" />
-            </ListItem>
-          )}
-        </List>
-      </Drawer>
-
-      {/* Main content */}
-      <Box flex="1">
-        <Routes>
-          <Route path="/" element={<MatchesPage />} />
-          <Route path="/matches" element={<MatchesPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/mypredictions" element={<MyPredictionsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/profile" element={<UserProfile />} />
-          <Route path="/login" element={<UserLogin />} />
-        </Routes>
-      </Box>
-
-      {/* Footer */}
-      <Box
-        component="footer"
-        sx={{
-          bgcolor:
-            backendStatus === "online"
-              ? "success.main"
-              : backendStatus === "offline"
-              ? "error.main"
-              : "warning.main",
-          color: "white",
-          p: 1,
-          textAlign: "center",
-          fontSize: "0.8rem",
-        }}
-      >
-        {backendStatus === "checking" && "🔄 Checking backend..."}
-        {backendStatus === "online" && `🟢 Connected to backend: ${API_BASE_URL}`}
-        {backendStatus === "offline" && `🔴 Backend not reachable: ${API_BASE_URL}`}
-      </Box>
-    </Box>
+        ))}
+      </List>
+    </div>
   );
-}
 
-export default function AppWrapper() {
   return (
-    <Router>
-      <App />
-    </Router>
+    <UserProvider>
+      <Router>
+        <Box sx={{ display: "flex" }}>
+          <CssBaseline />
+          {/* Top AppBar */}
+          <AppBar position="fixed" sx={{ zIndex: 1201 }}>
+            <Toolbar>
+              <IconButton
+                color="inherit"
+                edge="start"
+                onClick={handleDrawerToggle}
+                sx={{ mr: 2 }}
+              >
+                <MenuIcon />
+              </IconButton>
+              <SportsRugbyIcon sx={{ mr: 1 }} />
+              <Typography variant="h6" noWrap>
+                {pageTitle}
+              </Typography>
+              <Box sx={{ flexGrow: 1 }} />
+              {/* ✅ Backend Status Indicator */}
+              <Tooltip title={`Backend status: ${backendStatus}`}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color:
+                      backendStatus === "online"
+                        ? "lightgreen"
+                        : backendStatus === "offline"
+                        ? "red"
+                        : "orange",
+                  }}
+                >
+                  {backendStatus === "online"
+                    ? "Backend online"
+                    : backendStatus === "offline"
+                    ? "Backend offline"
+                    : "Checking..."}
+                </Typography>
+              </Tooltip>
+            </Toolbar>
+          </AppBar>
+
+          {/* Side Drawer */}
+          <Box
+            component="nav"
+            sx={{ width: { sm: 240 }, flexShrink: { sm: 0 } }}
+          >
+            <Drawer
+              variant="temporary"
+              open={mobileOpen}
+              onClose={handleDrawerToggle}
+              ModalProps={{ keepMounted: true }}
+              sx={{
+                display: { xs: "block", sm: "none" },
+                "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
+              }}
+            >
+              {drawer}
+            </Drawer>
+            <Drawer
+              variant="permanent"
+              sx={{
+                display: { xs: "none", sm: "block" },
+                "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
+              }}
+              open
+            >
+              {drawer}
+            </Drawer>
+          </Box>
+
+          {/* Main Content */}
+          <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+            <Toolbar />
+            <Routes>
+              <Route path="/" element={<MatchesPage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/mypredictions" element={<MyPredictionsPage />} />
+              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/login" element={<UserLogin />} />
+              <Route path="/admin" element={<AdminPage />} />
+            </Routes>
+          </Box>
+        </Box>
+      </Router>
+    </UserProvider>
   );
 }
+
+export default App;
