@@ -29,6 +29,9 @@ import UserLogin from "./pages/UserLogin";
 import UserProfile from "./pages/UserProfile";
 import { useUser } from "./context/UserContext";
 
+// ✅ Import the base URL from api.js so App.js and pages stay in sync
+import { API_BASE_URL } from "./api/api";
+
 // ✅ Map routes → natural page titles
 const pageTitles = {
   "/": "Matches",
@@ -43,7 +46,6 @@ const pageTitles = {
 function App() {
   const { user, isAdmin, setUser } = useUser();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [backendUrl, setBackendUrl] = useState("");
   const [backendStatus, setBackendStatus] = useState("checking");
 
   const navigate = useNavigate();
@@ -70,30 +72,25 @@ function App() {
   }, [user, setUser]);
 
   // ✅ Backend connectivity check
-useEffect(() => {
-  const url = process.env.REACT_APP_API_URL || "http://localhost:5001/api";  // ✅ match api.js
-  setBackendUrl(url);
-
-  const checkBackend = async () => {
-    try {
-      const res = await fetch(`${url}/hello`);
-      if (res.ok) {
-        setBackendStatus("online");
-        console.log(`✅ Backend reachable at: ${url}`);
-      } else {
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/hello`);
+        if (res.ok) {
+          setBackendStatus("online");
+          console.log(`✅ Backend reachable at: ${API_BASE_URL}`);
+        } else {
+          setBackendStatus("offline");
+          console.warn(`⚠️ Backend returned error at: ${API_BASE_URL}`);
+        }
+      } catch (err) {
         setBackendStatus("offline");
-        console.warn(`⚠️ Backend returned error at: ${url}`);
+        console.error(`❌ Backend not reachable at: ${API_BASE_URL}`, err);
       }
-    } catch (err) {
-      setBackendStatus("offline");
-      console.error(`❌ Backend not reachable at: ${url}`, err);
-    }
-  };
+    };
 
-  checkBackend();
-}, []);
-
-  
+    checkBackend();
+  }, []);
 
   // ✅ Logout handler
   const handleLogout = () => {
@@ -193,8 +190,8 @@ useEffect(() => {
         }}
       >
         {backendStatus === "checking" && "🔄 Checking backend..."}
-        {backendStatus === "online" && `🟢 Connected to backend: ${backendUrl}`}
-        {backendStatus === "offline" && `🔴 Backend not reachable: ${backendUrl}`}
+        {backendStatus === "online" && `🟢 Connected to backend: ${API_BASE_URL}`}
+        {backendStatus === "offline" && `🔴 Backend not reachable: ${API_BASE_URL}`}
       </Box>
     </Box>
   );
