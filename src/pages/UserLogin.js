@@ -50,7 +50,8 @@ function UserLogin() {
         sessionStorage.setItem("user", JSON.stringify(res));
       }
 
-      navigate("/matches");
+      // ✅ Redirect to Matches page after login/register
+      navigate("/");
     } catch (err) {
       console.error("❌ Login error:", err);
       setError("Login failed. Please try again.");
