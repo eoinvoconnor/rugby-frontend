@@ -29,7 +29,7 @@ import UserLogin from "./pages/UserLogin";
 import UserProfile from "./pages/UserProfile";
 import { useUser } from "./context/UserContext";
 
-// ✅ Import the base URL from api.js so App.js and pages stay in sync
+// ✅ Import the base URL from api.js
 import { API_BASE_URL } from "./api/api";
 
 // ✅ Map routes → natural page titles
@@ -51,10 +51,8 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ Dynamic page title
   const pageTitle = pageTitles[location.pathname] || "Rugby Predictions";
 
-  // ✅ Update browser tab title
   useEffect(() => {
     document.title = pageTitle;
   }, [pageTitle]);
@@ -71,11 +69,11 @@ function App() {
     }
   }, [user, setUser]);
 
-  // ✅ Backend connectivity check
+  // ✅ Backend connectivity check → use competitions endpoint instead of /hello
   useEffect(() => {
     const checkBackend = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/hello`);
+        const res = await fetch(`${API_BASE_URL}/competitions`);
         if (res.ok) {
           setBackendStatus("online");
           console.log(`✅ Backend reachable at: ${API_BASE_URL}`);
@@ -92,7 +90,6 @@ function App() {
     checkBackend();
   }, []);
 
-  // ✅ Logout handler
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -133,21 +130,18 @@ function App() {
             <ListItemText primary="My predictions" />
           </ListItem>
 
-          {/* Only visible after login */}
           {user && (
             <ListItem button component={Link} to="/profile">
               <ListItemText primary="Profile" />
             </ListItem>
           )}
 
-          {/* Admin only */}
           {isAdmin && (
             <ListItem button component={Link} to="/admin">
               <ListItemText primary="Admin" />
             </ListItem>
           )}
 
-          {/* Login / Logout toggle */}
           {user ? (
             <ListItem button onClick={handleLogout}>
               <ListItemText primary="Logout" />
