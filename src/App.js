@@ -70,9 +70,28 @@ function App() {
   }, [user, setUser]);
 
   // ✅ Backend connectivity check
-  useEffect(() => {
-    const url = process.env.REACT_APP_BACKEND_URL || "http://localhost:5001/api";
-    setBackendUrl(url);
+useEffect(() => {
+  const url = process.env.REACT_APP_API_URL || "http://localhost:5001/api";  // ✅ match api.js
+  setBackendUrl(url);
+
+  const checkBackend = async () => {
+    try {
+      const res = await fetch(`${url}/hello`);
+      if (res.ok) {
+        setBackendStatus("online");
+        console.log(`✅ Backend reachable at: ${url}`);
+      } else {
+        setBackendStatus("offline");
+        console.warn(`⚠️ Backend returned error at: ${url}`);
+      }
+    } catch (err) {
+      setBackendStatus("offline");
+      console.error(`❌ Backend not reachable at: ${url}`, err);
+    }
+  };
+
+  checkBackend();
+}, []);
 
     const checkBackend = async () => {
       try {
