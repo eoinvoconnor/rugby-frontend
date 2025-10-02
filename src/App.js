@@ -136,33 +136,22 @@ function App() {
           </AppBar>
 
           {/* Side Drawer */}
-          <Box
-            component="nav"
-            sx={{ width: { sm: 240 }, flexShrink: { sm: 0 } }}
-          >
-            <Drawer
-              variant="temporary"
-              open={mobileOpen}
-              onClose={handleDrawerToggle}
-              ModalProps={{ keepMounted: true }}
-              sx={{
-                display: { xs: "block", sm: "none" },
-                "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
-              }}
-            >
-              {drawer}
-            </Drawer>
-            <Drawer
-              variant="permanent"
-              sx={{
-                display: { xs: "none", sm: "block" },
-                "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
-              }}
-              open
-            >
-              {drawer}
-            </Drawer>
-          </Box>
+          <<Box
+  component="nav"
+  sx={{ width: { sm: 240 }, flexShrink: { sm: 0 } }}
+>
+  <Drawer
+    variant="temporary"
+    open={mobileOpen}
+    onClose={handleDrawerToggle}
+    ModalProps={{ keepMounted: true }}
+    sx={{
+      "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
+    }}
+  >
+    {drawer}
+  </Drawer>
+</Box>
 
           {/* Main Content */}
           <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
