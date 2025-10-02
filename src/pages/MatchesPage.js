@@ -208,12 +208,9 @@ function MatchesPage() {
                         !isPast && handlePrediction(match.id, match.teamA)
                       }
                       sx={{
-                        backgroundColor:
-                          userPred.team === match.teamA
-                            ? competitionColors[match.competitionName] || "grey"
-                            : "lightgrey",
-                        color:
-                          userPred.team === match.teamA ? "white" : "black",
+                        backgroundColor: competitionColors[match.competitionName] || "grey",
+                        opacity: userPred.team === match.teamA ? 1 : 0.5,
+                        color: "white",
                       }}
                     />
                     <Chip
@@ -222,12 +219,9 @@ function MatchesPage() {
                         !isPast && handlePrediction(match.id, match.teamB)
                       }
                       sx={{
-                        backgroundColor:
-                          userPred.team === match.teamB
-                            ? competitionColors[match.competitionName] || "grey"
-                            : "lightgrey",
-                        color:
-                          userPred.team === match.teamB ? "white" : "black",
+                        backgroundColor: competitionColors[match.competitionName] || "grey",
+                        opacity: userPred.team === match.teamB ? 1 : 0.5,
+                        color: "white",
                       }}
                     />
                   </Box>
