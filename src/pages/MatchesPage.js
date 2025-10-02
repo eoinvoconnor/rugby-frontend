@@ -70,9 +70,17 @@ function MatchesPage() {
   };
 
   const handleMarginChange = (matchId, value) => {
+    // ✅ Validation: clamp between 1–999, no zero or negatives
+    let margin = parseInt(value, 10);
+    if (isNaN(margin)) margin = "";
+    else {
+      if (margin < 1) margin = 1;
+      if (margin > 999) margin = 999;
+    }
+
     setPredictions((prev) => ({
       ...prev,
-      [matchId]: { ...(prev[matchId] || {}), margin: value },
+      [matchId]: { ...(prev[matchId] || {}), margin },
     }));
   };
 
@@ -233,7 +241,7 @@ function MatchesPage() {
                     sx={{ width: 60, ml: 1 }}
                     value={userPred.margin || ""}
                     onChange={(e) =>
-                      handleMarginChange(match.id, parseInt(e.target.value, 10))
+                      handleMarginChange(match.id, e.target.value)
                     }
                     disabled={isPast}
                   />
