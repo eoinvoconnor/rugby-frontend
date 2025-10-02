@@ -93,24 +93,7 @@ useEffect(() => {
   checkBackend();
 }, []);
 
-    const checkBackend = async () => {
-      try {
-        const res = await fetch(`${url}/hello`);
-        if (res.ok) {
-          setBackendStatus("online");
-          console.log(`✅ Backend reachable at: ${url}`);
-        } else {
-          setBackendStatus("offline");
-          console.warn(`⚠️ Backend returned error at: ${url}`);
-        }
-      } catch (err) {
-        setBackendStatus("offline");
-        console.error(`❌ Backend not reachable at: ${url}`, err);
-      }
-    };
-
-    checkBackend();
-  }, []);
+  
 
   // ✅ Logout handler
   const handleLogout = () => {
