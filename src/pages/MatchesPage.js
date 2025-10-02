@@ -8,6 +8,8 @@ import {
   Chip,
   CircularProgress,
   Container,
+  FormControlLabel,
+  Switch,
   Stack,
   TextField,
   Typography,
@@ -23,6 +25,7 @@ function MatchesPage() {
   const [predictions, setPredictions] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
+  const [hideCompleted, setHideCompleted] = useState(false);
 
   // Load competitions + matches
   useEffect(() => {
@@ -107,25 +110,43 @@ function MatchesPage() {
 
   return (
     <Container>
-      {/* Competition Filter Chips */}
-      <Stack direction="row" spacing={1} mb={2} sx={{ flexWrap: "wrap" }}>
-        <Chip
-          label="ALL"
-          color={filter === "ALL" ? "primary" : "default"}
-          onClick={() => setFilter("ALL")}
-        />
-        {competitions.map((c) => (
+      {/* Top controls: Competition Filter + Hide Completed */}
+      <Stack
+        direction="row"
+        spacing={2}
+        mb={2}
+        sx={{ flexWrap: "wrap", alignItems: "center" }}
+      >
+        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
           <Chip
-            key={c.id}
-            label={c.name}
-            onClick={() => setFilter(c.name)}
-            sx={{
-              bgcolor:
-                filter === c.name ? c.color || "primary.main" : "default",
-              color: filter === c.name ? "white" : "black",
-            }}
+            label="ALL"
+            color={filter === "ALL" ? "primary" : "default"}
+            onClick={() => setFilter("ALL")}
           />
-        ))}
+          {competitions.map((c) => (
+            <Chip
+              key={c.id}
+              label={c.name}
+              onClick={() => setFilter(c.name)}
+              sx={{
+                bgcolor:
+                  filter === c.name
+                    ? c.color || "primary.main"
+                    : "grey.300",
+                color: filter === c.name ? "white" : "black",
+              }}
+            />
+          ))}
+        </Stack>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={hideCompleted}
+              onChange={(e) => setHideCompleted(e.target.checked)}
+            />
+          }
+          label="Hide Completed Matches"
+        />
       </Stack>
 
       {/* Clusters */}
@@ -152,82 +173,88 @@ function MatchesPage() {
                   {comp}
                 </Typography>
 
-                {matches.map((m) => {
-                  const isPast = dayjs(m.kickoff).isBefore(dayjs());
-                  const pred = predictions[m._id] || {};
+                {matches
+                  .filter(
+                    (m) =>
+                      !hideCompleted ||
+                      dayjs(m.kickoff).isAfter(dayjs())
+                  )
+                  .map((m) => {
+                    const isPast = dayjs(m.kickoff).isBefore(dayjs());
+                    const pred = predictions[m._id] || {};
 
-                  return (
-                    <Box
-                      key={m._id}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        p: 1,
-                        borderLeft: `8px solid ${compData?.color || "#ccc"}`,
-                        mb: 1,
-                        bgcolor: isPast ? "#f5f5f5" : "white",
-                      }}
-                    >
-                      {isPast && <LockIcon sx={{ color: "grey", mr: 2 }} />}
+                    return (
+                      <Box
+                        key={m._id}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          p: 1,
+                          borderLeft: `8px solid ${compData?.color || "#ccc"}`,
+                          mb: 1,
+                          bgcolor: isPast ? "#f5f5f5" : "white",
+                        }}
+                      >
+                        {isPast && <LockIcon sx={{ color: "grey", mr: 2 }} />}
 
-                      <Stack direction="row" spacing={1}>
-                        <Chip
-                          label={m.teamA}
+                        <Stack direction="row" spacing={1}>
+                          <Chip
+                            label={m.teamA}
+                            disabled={isPast}
+                            sx={{
+                              bgcolor:
+                                pred.team === m.teamA
+                                  ? compData?.color || "primary.main"
+                                  : "grey.200",
+                              color: pred.team === m.teamA ? "white" : "black",
+                            }}
+                            onClick={() =>
+                              !isPast &&
+                              handlePredictionChange(
+                                m._id,
+                                m.teamA,
+                                pred.margin
+                              )
+                            }
+                          />
+                          <Chip
+                            label={m.teamB}
+                            disabled={isPast}
+                            sx={{
+                              bgcolor:
+                                pred.team === m.teamB
+                                  ? compData?.color || "primary.main"
+                                  : "grey.200",
+                              color: pred.team === m.teamB ? "white" : "black",
+                            }}
+                            onClick={() =>
+                              !isPast &&
+                              handlePredictionChange(
+                                m._id,
+                                m.teamB,
+                                pred.margin
+                              )
+                            }
+                          />
+                        </Stack>
+
+                        <TextField
+                          type="number"
+                          size="small"
+                          value={pred.margin || ""}
                           disabled={isPast}
-                          sx={{
-                            bgcolor:
-                              pred.team === m.teamA
-                                ? compData?.color || "primary.main"
-                                : "default",
-                            color: pred.team === m.teamA ? "white" : "black",
-                          }}
-                          onClick={() =>
-                            !isPast &&
+                          onChange={(e) =>
                             handlePredictionChange(
                               m._id,
-                              m.teamA,
-                              pred.margin
+                              pred.team,
+                              e.target.value
                             )
                           }
+                          sx={{ width: 70, ml: 2 }}
                         />
-                        <Chip
-                          label={m.teamB}
-                          disabled={isPast}
-                          sx={{
-                            bgcolor:
-                              pred.team === m.teamB
-                                ? compData?.color || "primary.main"
-                                : "default",
-                            color: pred.team === m.teamB ? "white" : "black",
-                          }}
-                          onClick={() =>
-                            !isPast &&
-                            handlePredictionChange(
-                              m._id,
-                              m.teamB,
-                              pred.margin
-                            )
-                          }
-                        />
-                      </Stack>
-
-                      <TextField
-                        type="number"
-                        size="small"
-                        value={pred.margin || ""}
-                        disabled={isPast}
-                        onChange={(e) =>
-                          handlePredictionChange(
-                            m._id,
-                            pred.team,
-                            e.target.value
-                          )
-                        }
-                        sx={{ width: 70, ml: 2 }}
-                      />
-                    </Box>
-                  );
-                })}
+                      </Box>
+                    );
+                  })}
 
                 {/* Submit button per competition cluster */}
                 {user && (
