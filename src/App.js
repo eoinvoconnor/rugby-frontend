@@ -1,6 +1,13 @@
 // src/App.js
-import React, { useState, useEffect, useContext } from "react";
-import { BrowserRouter as Router, Route, Routes, Link, Navigate, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Link,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -25,12 +32,12 @@ import UserProfile from "./pages/UserProfile";
 import UserLogin from "./pages/UserLogin";
 import AdminPage from "./pages/AdminPage";
 
-import { UserProvider, UserContext } from "./context/UserContext";
+import { UserProvider, useUser } from "./context/UserContext"; // ✅ FIXED
 import { API_BASE_URL } from "./api/api";
 
 // ✅ Protected route wrapper
 function ProtectedRoute({ children, requireAdmin = false }) {
-  const { user } = useContext(UserContext);
+  const { user } = useUser(); // ✅ FIXED
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -48,7 +55,7 @@ function AppContent() {
   const [backendStatus, setBackendStatus] = useState("checking");
   const [pageTitle, setPageTitle] = useState("Matches");
 
-  const { user, setUser } = useContext(UserContext);
+  const { user, setUser } = useUser(); // ✅ FIXED
   const navigate = useNavigate();
 
   const handleDrawerToggle = () => {
