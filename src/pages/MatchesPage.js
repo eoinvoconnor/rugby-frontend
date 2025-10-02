@@ -9,11 +9,10 @@ import {
   Chip,
   Stack,
   TextField,
-  IconButton,
 } from "@mui/material";
 import dayjs from "dayjs";
 import LockIcon from "@mui/icons-material/Lock";
-import { apiFetch } from "../api/api"; // ✅ fixed import
+import { apiFetch } from "../api/api";
 import { useUser } from "../context/UserContext";
 
 function MatchesPage() {
@@ -47,11 +46,7 @@ function MatchesPage() {
     }));
   };
 
-  const handleSubmit = async (clusterDate) => {
-    const clusterMatches = matches.filter(
-      (m) => dayjs(m.date).format("YYYY-MM-DD") === clusterDate
-    );
-
+  const handleSubmit = async (clusterMatches) => {
     const toSubmit = clusterMatches
       .filter((m) => predictions[m._id])
       .map((m) => ({
@@ -72,6 +67,7 @@ function MatchesPage() {
     }
   };
 
+  // Filtering
   const filteredMatches =
     filter === "ALL"
       ? matches
@@ -82,17 +78,23 @@ function MatchesPage() {
     return hideCompleted ? !isPast : true;
   });
 
-  // Group matches by date
+  // Group by competition + date
   const grouped = upcomingMatches.reduce((acc, match) => {
     const dateKey = dayjs(match.date).format("YYYY-MM-DD");
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(match);
+    const compKey = match.competition;
+    const clusterKey = `${compKey}_${dateKey}`;
+
+    if (!acc[clusterKey]) {
+      acc[clusterKey] = { competition: compKey, date: dateKey, matches: [] };
+    }
+    acc[clusterKey].matches.push(match);
     return acc;
   }, {});
 
-  const sortedDates = Object.keys(grouped).sort(
-    (a, b) => new Date(a) - new Date(b)
-  );
+  const sortedClusters = Object.values(grouped).sort((a, b) => {
+    if (a.date === b.date) return a.competition.localeCompare(b.competition);
+    return new Date(a.date) - new Date(b.date);
+  });
 
   return (
     <Container sx={{ mt: 2 }}>
@@ -100,7 +102,7 @@ function MatchesPage() {
         Matches
       </Typography>
 
-      {/* 📌 Competition Filter */}
+      {/* Competition Filter */}
       <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
         <Chip
           label="ALL"
@@ -121,15 +123,16 @@ function MatchesPage() {
         ))}
       </Stack>
 
-      {sortedDates.map((dateKey) => (
-        <Paper key={dateKey} sx={{ p: 2, mb: 3 }}>
+      {sortedClusters.map((cluster) => (
+        <Paper key={cluster.competition + cluster.date} sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
-            {dayjs(dateKey).format("dddd, D MMMM YYYY")}
+            {cluster.competition} — {dayjs(cluster.date).format("dddd, D MMMM YYYY")}
           </Typography>
 
-          {grouped[dateKey].map((m) => {
+          {cluster.matches.map((m) => {
             const isPast = dayjs(m.date).isBefore(dayjs());
             const pred = predictions[m._id] || {};
+            const comp = competitions.find((c) => c.name === m.competition);
 
             return (
               <Box
@@ -138,34 +141,38 @@ function MatchesPage() {
                   display: "flex",
                   alignItems: "center",
                   p: 1,
-                  borderLeft: `8px solid ${m.color || "#ccc"}`,
+                  borderLeft: `8px solid ${comp?.color || "#ccc"}`,
                   mb: 1,
                   bgcolor: isPast ? "#f5f5f5" : "white",
                 }}
               >
-                <Typography sx={{ flex: 1 }}>
-                  {m.teamA} vs {m.teamB}
-                </Typography>
-
                 {isPast ? (
-                  <LockIcon sx={{ color: "grey" }} />
+                  <LockIcon sx={{ color: "grey", mr: 2 }} />
                 ) : (
                   <>
                     <Stack direction="row" spacing={1}>
                       <Chip
                         label={m.teamA}
-                        color={
-                          pred.team === m.teamA ? "primary" : "default"
-                        }
+                        sx={{
+                          bgcolor:
+                            pred.team === m.teamA
+                              ? comp?.color || "primary.main"
+                              : "default",
+                          color: pred.team === m.teamA ? "white" : "black",
+                        }}
                         onClick={() =>
                           handlePredictionChange(m._id, m.teamA, pred.margin)
                         }
                       />
                       <Chip
                         label={m.teamB}
-                        color={
-                          pred.team === m.teamB ? "primary" : "default"
-                        }
+                        sx={{
+                          bgcolor:
+                            pred.team === m.teamB
+                              ? comp?.color || "primary.main"
+                              : "default",
+                          color: pred.team === m.teamB ? "white" : "black",
+                        }}
                         onClick={() =>
                           handlePredictionChange(m._id, m.teamB, pred.margin)
                         }
@@ -190,10 +197,10 @@ function MatchesPage() {
           <Box sx={{ textAlign: "right", mt: 1 }}>
             <Button
               variant="contained"
-              onClick={() => handleSubmit(dateKey)}
-              disabled={
-                grouped[dateKey].every((m) => dayjs(m.date).isBefore(dayjs()))
-              }
+              onClick={() => handleSubmit(cluster.matches)}
+              disabled={cluster.matches.every((m) =>
+                dayjs(m.date).isBefore(dayjs())
+              )}
             >
               Submit
             </Button>
