@@ -1,6 +1,6 @@
 // src/App.js
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
+import React, { useState, useEffect, useContext } from "react";
+import { BrowserRouter as Router, Route, Routes, Link, Navigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -25,28 +25,54 @@ import UserProfile from "./pages/UserProfile";
 import UserLogin from "./pages/UserLogin";
 import AdminPage from "./pages/AdminPage";
 
-import { UserProvider } from "./context/UserContext";
+import { UserProvider, UserContext } from "./context/UserContext";
 import { API_BASE_URL } from "./api/api";
 
-function App() {
+// ✅ Protected route wrapper
+function ProtectedRoute({ children, requireAdmin = false }) {
+  const { user } = useContext(UserContext);
+
+  if (!user) {
+    // Not logged in → redirect to login
+    return <Navigate to="/login" replace />;
+  }
+
+  if (requireAdmin && !user.isAdmin) {
+    // Logged in but not admin → redirect to home
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
+function AppContent() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [backendStatus, setBackendStatus] = useState("checking");
   const [pageTitle, setPageTitle] = useState("Matches");
 
+  const { user } = useContext(UserContext);
+
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
-    console.log("📱 Drawer toggle clicked. New state:", !mobileOpen);
   };
 
-  // ✅ Drawer navigation items
+  // ✅ Build menu items dynamically
   const menuItems = [
     { text: "Matches", path: "/", title: "Matches" },
     { text: "Leaderboard", path: "/leaderboard", title: "Leaderboard" },
-    { text: "My predictions", path: "/mypredictions", title: "My predictions" },
-    { text: "Profile", path: "/profile", title: "Profile" },
-    { text: "Login", path: "/login", title: "Login" },
-    { text: "Admin", path: "/admin", title: "Admin" },
   ];
+
+  if (!user) {
+    menuItems.push({ text: "Login", path: "/login", title: "Login" });
+  } else {
+    menuItems.push(
+      { text: "My predictions", path: "/mypredictions", title: "My predictions" },
+      { text: "Profile", path: "/profile", title: "Profile" }
+    );
+    if (user.isAdmin) {
+      menuItems.push({ text: "Admin", path: "/admin", title: "Admin" });
+    }
+  }
 
   // ✅ Backend health check
   useEffect(() => {
@@ -93,80 +119,104 @@ function App() {
   );
 
   return (
+    <Box sx={{ display: "flex" }}>
+      <CssBaseline />
+      {/* Top AppBar */}
+      <AppBar position="fixed" sx={{ zIndex: 1201 }}>
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <SportsRugbyIcon sx={{ mr: 1 }} />
+          <Typography variant="h6" noWrap>
+            {pageTitle}
+          </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          {/* ✅ Backend Status Indicator */}
+          <Tooltip title={`Backend status: ${backendStatus}`}>
+            <Typography
+              variant="body2"
+              sx={{
+                color:
+                  backendStatus === "online"
+                    ? "lightgreen"
+                    : backendStatus === "offline"
+                    ? "red"
+                    : "orange",
+              }}
+            >
+              {backendStatus === "online"
+                ? "Backend online"
+                : backendStatus === "offline"
+                ? "Backend offline"
+                : "Checking..."}
+            </Typography>
+          </Tooltip>
+        </Toolbar>
+      </AppBar>
+
+      {/* Side Drawer */}
+      <Box component="nav" sx={{ width: 240, flexShrink: 0 }}>
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
+          }}
+        >
+          {drawer}
+        </Drawer>
+      </Box>
+
+      {/* Main Content */}
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Toolbar />
+        <Routes>
+          <Route path="/" element={<MatchesPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route
+            path="/mypredictions"
+            element={
+              <ProtectedRoute>
+                <MyPredictionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/login" element={<UserLogin />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Box>
+    </Box>
+  );
+}
+
+function App() {
+  return (
     <UserProvider>
       <Router>
-        <Box sx={{ display: "flex" }}>
-          <CssBaseline />
-          {/* Top AppBar */}
-          <AppBar position="fixed" sx={{ zIndex: 1201 }}>
-            <Toolbar>
-              <IconButton
-                color="inherit"
-                edge="start"
-                onClick={handleDrawerToggle}
-                sx={{ mr: 2 }}
-              >
-                <MenuIcon />
-              </IconButton>
-              <SportsRugbyIcon sx={{ mr: 1 }} />
-              <Typography variant="h6" noWrap>
-                {pageTitle}
-              </Typography>
-              <Box sx={{ flexGrow: 1 }} />
-              {/* ✅ Backend Status Indicator */}
-              <Tooltip title={`Backend status: ${backendStatus}`}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color:
-                      backendStatus === "online"
-                        ? "lightgreen"
-                        : backendStatus === "offline"
-                        ? "red"
-                        : "orange",
-                  }}
-                >
-                  {backendStatus === "online"
-                    ? "Backend online"
-                    : backendStatus === "offline"
-                    ? "Backend offline"
-                    : "Checking..."}
-                </Typography>
-              </Tooltip>
-            </Toolbar>
-          </AppBar>
-
-          {/* Side Drawer */}
-          <Box
-  component="nav"
-  sx={{ width: 240, flexShrink: 0 }}
->
-  <Drawer
-    variant="temporary"
-    open={mobileOpen}
-    onClose={handleDrawerToggle}
-    ModalProps={{ keepMounted: true }}
-    sx={{
-      "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
-    }}
-  >
-    {drawer}
-  </Drawer>
-</Box>
-
-          {/* Main Content */}
-          <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-            <Toolbar />
-            <Routes>
-              <Route path="/" element={<MatchesPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/mypredictions" element={<MyPredictionsPage />} />
-              <Route path="/profile" element={<UserProfile />} />
-              <Route path="/login" element={<UserLogin />} />
-              <Route path="/admin" element={<AdminPage />} />
-            </Routes>
-          </Box>
-        </Box>
+        <AppContent />
       </Router>
     </UserProvider>
   );
