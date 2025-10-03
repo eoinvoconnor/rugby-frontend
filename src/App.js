@@ -1,13 +1,6 @@
 // src/App.js
 import React, { useState, useEffect } from "react";
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  Link,
-  Navigate,
-  useNavigate,
-} from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -32,61 +25,35 @@ import UserProfile from "./pages/UserProfile";
 import UserLogin from "./pages/UserLogin";
 import AdminPage from "./pages/AdminPage";
 
-import { UserProvider, useUser } from "./context/UserContext"; // ✅ FIXED
+import { UserProvider, useUser } from "./context/UserContext";
 import { API_BASE_URL } from "./api/api";
-
-// ✅ Protected route wrapper
-function ProtectedRoute({ children, requireAdmin = false }) {
-  const { user } = useUser(); // ✅ FIXED
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (requireAdmin && !user.isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
-}
 
 function AppContent() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [backendStatus, setBackendStatus] = useState("checking");
   const [pageTitle, setPageTitle] = useState("Matches");
 
-  const { user, setUser } = useUser(); // ✅ FIXED
-  const navigate = useNavigate();
+  const { user, logout } = useUser();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  // ✅ Logout function
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    navigate("/login");
-  };
-
-  // ✅ Build menu items dynamically
+  // ✅ Drawer navigation items (switch Login/Logout dynamically)
   const menuItems = [
     { text: "Matches", path: "/", title: "Matches" },
     { text: "Leaderboard", path: "/leaderboard", title: "Leaderboard" },
+    ...(user
+      ? [
+          { text: "My predictions", path: "/mypredictions", title: "My predictions" },
+          { text: "Profile", path: "/profile", title: "Profile" },
+          ...(user.isAdmin
+            ? [{ text: "Admin", path: "/admin", title: "Admin" }]
+            : []),
+          { text: "Logout", action: logout }, // ✅ logout wired
+        ]
+      : [{ text: "Login", path: "/login", title: "Login" }]),
   ];
-
-  if (!user) {
-    menuItems.push({ text: "Login", path: "/login", title: "Login" });
-  } else {
-    menuItems.push(
-      { text: "My predictions", path: "/mypredictions", title: "My predictions" },
-      { text: "Profile", path: "/profile", title: "Profile" }
-    );
-    if (user.isAdmin) {
-      menuItems.push({ text: "Admin", path: "/admin", title: "Admin" });
-    }
-    menuItems.push({ text: "Logout", action: handleLogout });
-  }
 
   // ✅ Backend health check
   useEffect(() => {
@@ -118,15 +85,12 @@ function AppContent() {
           <ListItem
             button
             key={item.text}
-            component={item.path ? Link : "button"}
-            to={item.path || undefined}
+            component={item.path ? "a" : "button"}
+            href={item.path || undefined}
             onClick={() => {
-              if (item.action) {
-                item.action();
-              } else {
-                setPageTitle(item.title);
-                setMobileOpen(false);
-              }
+              if (item.action) item.action(); // ✅ trigger logout
+              if (item.title) setPageTitle(item.title);
+              setMobileOpen(false);
             }}
           >
             <ListItemText primary={item.text} />
@@ -179,13 +143,28 @@ function AppContent() {
       </AppBar>
 
       {/* Side Drawer */}
-      <Box component="nav" sx={{ width: 240, flexShrink: 0 }}>
+      <Box
+        component="nav"
+        sx={{ width: { sm: 240 }, flexShrink: { sm: 0 } }}
+      >
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
           sx={{
+            display: { xs: "block", sm: "none" },
+            "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
+          }}
+        >
+          {drawer}
+        </Drawer>
+        <Drawer
+          variant="temporary" // ✅ toggleable even on desktop
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          sx={{
+            display: { xs: "none", sm: "block" },
             "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
           }}
         >
@@ -199,38 +178,17 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<MatchesPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route
-            path="/mypredictions"
-            element={
-              <ProtectedRoute>
-                <MyPredictionsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <UserProfile />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/mypredictions" element={<MyPredictionsPage />} />
+          <Route path="/profile" element={<UserProfile />} />
           <Route path="/login" element={<UserLogin />} />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute requireAdmin>
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </Box>
     </Box>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <UserProvider>
       <Router>
@@ -239,5 +197,3 @@ function App() {
     </UserProvider>
   );
 }
-
-export default App;
