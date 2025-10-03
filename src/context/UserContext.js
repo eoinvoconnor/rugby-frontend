@@ -1,99 +1,97 @@
 // src/context/UserContext.js
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { API_BASE_URL } from "../api/api"; // ✅ reuse the API base URL
+import { API_BASE_URL } from "../api/api";
 
 const UserContext = createContext();
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [sessionVersion, setSessionVersion] = useState(null);
+  const [token, setToken] = useState(null);
 
-  // ✅ Restore user + session version on app load
+  // ✅ Restore user + token on app load
   useEffect(() => {
-    const storedUser =
-      localStorage.getItem("user") || sessionStorage.getItem("user");
-    if (storedUser) {
+    const storedUser = localStorage.getItem("user") || sessionStorage.getItem("user");
+    const storedToken = localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    if (storedUser && storedToken) {
       try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
+        setUser(JSON.parse(storedUser));
+        setToken(storedToken);
       } catch (err) {
-        console.error("❌ Failed to parse stored user:", err);
+        console.error("❌ Failed to restore user:", err);
       }
     }
-
-    // Fetch current session version from backend
-    fetch(`${API_BASE_URL}/session-version`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.sessionVersion) {
-          setSessionVersion(data.sessionVersion);
-        }
-      })
-      .catch((err) => console.error("❌ Failed to fetch session version:", err));
   }, []);
 
-  // 🔹 Login user and sync session version
-  const loginUser = async (email, firstname, surname, rememberMe = false) => {
+  // 🔹 Login user with JWT
+  const loginUser = async (email, password, rememberMe = false) => {
     try {
-      // 1. Get latest session version
-      const versionRes = await fetch(`${API_BASE_URL}/session-version`);
-      let currentVersion = null;
-      if (versionRes.ok) {
-        const { sessionVersion: serverVersion } = await versionRes.json();
-        currentVersion = serverVersion;
-        setSessionVersion(serverVersion);
-      }
-
-      // 2. Login request
       const res = await fetch(`${API_BASE_URL}/users/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, firstname, surname }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (!res.ok) {
         throw new Error("Login failed");
       }
 
-      const data = await res.json();
+      const data = await res.json(); // { token, user }
 
-      // 3. Attach session version to user object
-      const userWithSession = { ...data, sessionVersion: currentVersion };
-
-      setUser(userWithSession);
+      setUser(data.user);
+      setToken(data.token);
 
       const storage = rememberMe ? localStorage : sessionStorage;
-      storage.setItem("user", JSON.stringify(userWithSession));
+      storage.setItem("user", JSON.stringify(data.user));
+      storage.setItem("token", data.token);
 
-      return userWithSession;
+      return data.user;
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("❌ Login error:", err);
       return null;
     }
   };
 
-  // 🔹 Logout user (clears both storages)
+  // 🔹 Logout user
   const logoutUser = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     sessionStorage.removeItem("user");
+    sessionStorage.removeItem("token");
   };
 
-  // 🔹 Check if session is still valid
-  const isSessionValid = () => {
-    if (!user) return false;
-    return !sessionVersion || user.sessionVersion === sessionVersion;
+  // 🔹 Utility to fetch with auth headers
+  const authFetch = async (endpoint, options = {}) => {
+    const headers = {
+      ...(options.headers || {}),
+      Authorization: token ? `Bearer ${token}` : "",
+      "Content-Type": "application/json",
+    };
+
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!res.ok) {
+      throw new Error(`API error: ${res.status}`);
+    }
+
+    return res.json();
   };
 
   return (
     <UserContext.Provider
       value={{
         user,
-        setUser,
+        token,
         isAdmin: user?.isAdmin || false,
         loginUser,
         logoutUser,
-        isSessionValid,
+        authFetch,
+        isLoggedIn: !!user && !!token,
       }}
     >
       {children}
