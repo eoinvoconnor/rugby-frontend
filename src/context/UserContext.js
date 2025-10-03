@@ -6,71 +6,69 @@ const UserContext = createContext();
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(localStorage.getItem("authToken") || null);
 
-  // ✅ Load user from storage on startup
+  // Load user from token on mount
   useEffect(() => {
-    const storedUser =
-      JSON.parse(localStorage.getItem("user")) ||
-      JSON.parse(sessionStorage.getItem("user"));
-    const storedToken =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
-
-    if (storedUser && storedToken) {
-      setUser({ ...storedUser, token: storedToken });
-    }
-    setLoading(false);
-  }, []);
-
-  // ✅ Login or register user
-  const loginUser = async (email, _password, rememberMe, firstname, surname) => {
-    try {
-      const data = await apiFetch("/users/login", {
-        method: "POST",
-        body: JSON.stringify({ email, firstname, surname }),
-      });
-
-      if (data.token && data.user) {
-        const fullUser = {
-          id: data.user.id,
-          email: data.user.email,
-          firstname: data.user.firstname,
-          surname: data.user.surname,
-          isAdmin: data.user.isAdmin || false,
-          token: data.token,
-        };
-
-        setUser(fullUser);
-
-        if (rememberMe) {
-          localStorage.setItem("user", JSON.stringify(fullUser));
-          localStorage.setItem("token", data.token);
-        } else {
-          sessionStorage.setItem("user", JSON.stringify(fullUser));
-          sessionStorage.setItem("token", data.token);
-        }
-
-        return fullUser;
-      } else {
-        throw new Error("Invalid login response");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUser({
+          id: payload.id,
+          email: payload.email,
+          isAdmin: payload.isAdmin,
+        });
+      } catch (err) {
+        console.error("❌ Invalid stored token", err);
+        logout();
       }
-    } catch (err) {
-      console.error("❌ Login failed in context:", err);
-      throw err;
     }
+  }, [token]);
+
+  // Save/remove token in localStorage
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem("authToken", token);
+    } else {
+      localStorage.removeItem("authToken");
+    }
+  }, [token]);
+
+  // Login (or register auto-create)
+  const login = async (email, firstname = "", surname = "") => {
+    const res = await apiFetch("/users/login", {
+      method: "POST",
+      body: JSON.stringify({ email, firstname, surname }),
+    });
+
+    if (res.token) {
+      setToken(res.token);
+      setUser(res.user);
+      return res.user;
+    }
+    throw new Error("Login failed");
   };
 
-  // ✅ Logout user
-  const logoutUser = () => {
+  const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    sessionStorage.removeItem("user");
-    sessionStorage.removeItem("token");
+    setToken(null);
+    localStorage.removeItem("authToken");
+  };
+
+  // Attach token to API requests automatically
+  const authFetch = (endpoint, options = {}) => {
+    if (!token) throw new Error("Not authenticated");
+    return apiFetch(endpoint, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`,
+      },
+    });
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, loginUser, logoutUser }}>
+    <UserContext.Provider value={{ user, token, login, logout, authFetch }}>
       {children}
     </UserContext.Provider>
   );
