@@ -38,16 +38,18 @@ function UserLogin() {
         body: JSON.stringify({ email, firstname, surname }),
       });
 
-      if (!res || !res.id) {
-        throw new Error("Login failed");
+      if (!res || !res.user || !res.token) {
+        throw new Error("Login failed: missing token or user data.");
       }
 
-      setUser(res);
+      const userData = { ...res.user, token: res.token };
+
+      setUser(userData);
 
       if (rememberMe) {
-        localStorage.setItem("user", JSON.stringify(res));
+        localStorage.setItem("user", JSON.stringify(userData));
       } else {
-        sessionStorage.setItem("user", JSON.stringify(res));
+        sessionStorage.setItem("user", JSON.stringify(userData));
       }
 
       // ✅ Redirect to Matches page after login/register
