@@ -10,7 +10,7 @@ import {
   Button,
 } from "@mui/material";
 import dayjs from "dayjs";
-import { apiFetch } from "../api/api"; // ✅ fixed import
+import { apiFetch } from "../api/api";
 import { useUser } from "../context/UserContext";
 
 function MyPredictionsPage() {
@@ -21,8 +21,8 @@ function MyPredictionsPage() {
 
   useEffect(() => {
     if (user) {
-      loadPredictions();
       loadCompetitions();
+      loadPredictions();
     }
   }, [user]);
 
@@ -44,10 +44,21 @@ function MyPredictionsPage() {
     }
   }
 
+  // Attach competition info (name + color) to predictions
+  const predictionsWithComp = predictions.map((p) => {
+    const comp = competitions.find((c) => c.id === p.competitionId);
+    return {
+      ...p,
+      competitionName: comp?.name || "Unknown",
+      color: comp?.color || "#666",
+    };
+  });
+
+  // Apply filter
   const filteredPredictions =
     filter === "ALL"
-      ? predictions
-      : predictions.filter((p) => p.competition === filter);
+      ? predictionsWithComp
+      : predictionsWithComp.filter((p) => p.competitionName === filter);
 
   // Group by date
   const grouped = filteredPredictions.reduce((acc, pred) => {
@@ -71,6 +82,7 @@ function MyPredictionsPage() {
 
   return (
     <Container sx={{ mt: 2 }}>
+      {/* Competition filters */}
       <Stack
         direction="row"
         spacing={1}
@@ -98,6 +110,7 @@ function MyPredictionsPage() {
         </Button>
       </Stack>
 
+      {/* Predictions grouped by date */}
       {sortedDates.map((dateKey) => (
         <Paper key={dateKey} id={`date-${dateKey}`} sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" gutterBottom>
@@ -111,7 +124,7 @@ function MyPredictionsPage() {
                 display: "flex",
                 alignItems: "center",
                 p: 1,
-                borderLeft: `8px solid ${p.color || "#ccc"}`,
+                borderLeft: `8px solid ${p.color}`,
                 mb: 1,
                 bgcolor: "#fafafa",
               }}
@@ -122,7 +135,7 @@ function MyPredictionsPage() {
               <Chip
                 label={`${p.predictedWinner} by ${p.predictedMargin}`}
                 sx={{
-                  bgcolor: p.color || "primary.main",
+                  bgcolor: p.color,
                   color: "white",
                 }}
               />

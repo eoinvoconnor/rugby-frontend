@@ -75,12 +75,16 @@ function MatchesPage() {
 
   const handleSubmit = async (clusterMatches) => {
     try {
+      const token = localStorage.getItem("token"); // ✅ get JWT
       for (const match of clusterMatches) {
         const pred = predictions[match.id];
         if (!pred) continue;
 
         await apiFetch("/predictions", {
           method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`, // ✅ include token
+          },
           body: JSON.stringify({
             userId: user.id,
             matchId: match.id,
