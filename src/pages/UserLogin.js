@@ -5,115 +5,74 @@ import { useUser } from "../context/UserContext";
 import {
   Box,
   Button,
+  Container,
   TextField,
   Typography,
   Paper,
-  Alert,
-  FormControlLabel,
-  Checkbox,
 } from "@mui/material";
 
-function UserLogin() {
-  const navigate = useNavigate();
-  const { loginUser } = useUser();
-
+export default function UserLogin() {
   const [email, setEmail] = useState("");
   const [firstname, setFirstname] = useState("");
   const [surname, setSurname] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
+  const { login } = useUser(); // ✅ use context login
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     setError("");
-
-    if (!email || !firstname || !surname) {
-      setError("Please fill in all fields.");
-      return;
-    }
-
     try {
-      // ✅ Use loginUser from context
-      const user = await loginUser(email, "password-not-used", rememberMe);
-
-      if (!user) {
-        throw new Error("Login failed: missing token or user data.");
-      }
-
-      // ✅ Redirect to Matches page after login/register
-      navigate("/");
+      const user = await login(email, firstname, surname);
+      console.log("✅ Logged in:", user);
+      navigate("/"); // send user to MatchesPage after login
     } catch (err) {
       console.error("❌ Login error:", err);
-      setError("Login failed. Please try again.");
+      setError("Login failed. Please check your email.");
     }
   };
 
   return (
-    <Box
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      minHeight="80vh"
-    >
-      <Paper elevation={3} sx={{ p: 4, width: 400 }}>
+    <Container maxWidth="sm" sx={{ mt: 8 }}>
+      <Paper sx={{ p: 4 }}>
         <Typography variant="h5" gutterBottom>
           Login / Register
         </Typography>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
         <TextField
-          label="Email"
-          type="email"
           fullWidth
-          margin="normal"
+          label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          sx={{ mb: 2 }}
         />
-
         <TextField
-          label="First Name"
           fullWidth
-          margin="normal"
+          label="First Name"
           value={firstname}
           onChange={(e) => setFirstname(e.target.value)}
+          sx={{ mb: 2 }}
         />
-
         <TextField
-          label="Surname"
           fullWidth
-          margin="normal"
+          label="Surname"
           value={surname}
           onChange={(e) => setSurname(e.target.value)}
+          sx={{ mb: 2 }}
         />
-
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-              color="primary"
-            />
-          }
-          label="Remember me on this device"
-          sx={{ mt: 1 }}
-        />
-
-        <Button
-          variant="contained"
-          color="primary"
-          fullWidth
-          sx={{ mt: 2 }}
-          onClick={handleLogin}
-        >
-          Submit
-        </Button>
+        {error && (
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error}
+          </Typography>
+        )}
+        <Box textAlign="center">
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleLogin}
+          >
+            Login / Register
+          </Button>
+        </Box>
       </Paper>
-    </Box>
+    </Container>
   );
 }
-
-export default UserLogin;
