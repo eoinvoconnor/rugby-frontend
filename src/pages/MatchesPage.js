@@ -40,7 +40,7 @@ function MatchesPage() {
           const token = localStorage.getItem("token");
           const preds = await apiFetch("/predictions", {
             headers: {
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${token}`, // ✅ attach token
             },
           });
           const mapped = {};
@@ -88,8 +88,8 @@ function MatchesPage() {
         await apiFetch("/predictions", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json", // ✅ ensure JSON body is recognized
-            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // ✅ attach token
           },
           body: JSON.stringify({
             userId: user.id,
