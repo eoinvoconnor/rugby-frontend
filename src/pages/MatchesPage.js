@@ -37,7 +37,12 @@ function MatchesPage() {
         setMatches(sorted);
 
         if (user) {
-          const preds = await apiFetch("/predictions");
+          const token = localStorage.getItem("token");
+          const preds = await apiFetch("/predictions", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
           const mapped = {};
           preds.forEach((p) => {
             mapped[p.matchId] = { team: p.predictedWinner, margin: p.margin };
@@ -148,7 +153,9 @@ function MatchesPage() {
             onChange={() => setHideCompleted(!hideCompleted)}
           />
         }
-        label={hideCompleted ? "Show Completed Matches" : "Hide Completed Matches"}
+        label={
+          hideCompleted ? "Show Completed Matches" : "Hide Completed Matches"
+        }
       />
 
       {/* Matches grouped by date */}
