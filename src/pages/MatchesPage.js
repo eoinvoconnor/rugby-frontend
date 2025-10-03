@@ -88,6 +88,7 @@ function MatchesPage() {
         await apiFetch("/predictions", {
           method: "POST",
           headers: {
+            "Content-Type": "application/json", // ✅ ensure JSON body is recognized
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
