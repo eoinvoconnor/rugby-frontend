@@ -22,12 +22,19 @@ export default function UserLogin() {
   const handleLogin = async () => {
     setError("");
     try {
-      const user = await login(email, firstname, surname);
+      // ✅ Perform login/register
+      const { user, token } = await login(email, firstname, surname);
+
+      if (token) {
+        // ✅ Explicitly store token in localStorage for API calls
+        localStorage.setItem("token", token);
+      }
+
       console.log("✅ Logged in:", user);
-      navigate("/"); // send user to MatchesPage after login
+      navigate("/"); // redirect to MatchesPage
     } catch (err) {
       console.error("❌ Login error:", err);
-      setError("Login failed. Please check your email.");
+      setError("Login failed. Please check your details.");
     }
   };
 
@@ -64,11 +71,7 @@ export default function UserLogin() {
           </Typography>
         )}
         <Box textAlign="center">
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleLogin}
-          >
+          <Button variant="contained" color="primary" onClick={handleLogin}>
             Login / Register
           </Button>
         </Box>
