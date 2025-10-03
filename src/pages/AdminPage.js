@@ -1,580 +1,490 @@
 // src/pages/AdminPage.js
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Container,
+  Box,
   Typography,
-  Button,
-  Paper,
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
   TextField,
-  Stack,
-  Chip,
   IconButton,
-  Snackbar,
-  Alert,
   Tooltip,
+  Checkbox,
+  Button,
 } from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SaveIcon from "@mui/icons-material/Save";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
+import ReplayIcon from "@mui/icons-material/Replay";
+import SearchIcon from "@mui/icons-material/Search";
+import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import EditIcon from "@mui/icons-material/Edit";
-import LogoutIcon from "@mui/icons-material/Logout";
-import { DataGrid } from "@mui/x-data-grid";
-import { apiFetch } from "../api/api"; // ✅ fixed import
+import LockResetIcon from "@mui/icons-material/LockReset";
+
+import { apiFetch } from "../api/api";
+import { useUser } from "../context/UserContext";
 
 function AdminPage() {
-  const [matches, setMatches] = useState([]);
+  const { user, logoutUser } = useUser();
+
+  // ✅ State for competitions
   const [competitions, setCompetitions] = useState([]);
-  const [newComp, setNewComp] = useState({
+  const [newCompetition, setNewCompetition] = useState({
     name: "",
     url: "",
     color: "#1976d2",
   });
 
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "info",
+  // ✅ State for matches
+  const [matches, setMatches] = useState([]);
+  const [matchSearch, setMatchSearch] = useState("");
+  const [showCompleted, setShowCompleted] = useState(true);
+
+  // ✅ State for users
+  const [users, setUsers] = useState([]);
+  const [newUser, setNewUser] = useState({
+    firstname: "",
+    surname: "",
+    email: "",
+    isAdmin: false,
   });
+  const [userSearch, setUserSearch] = useState("");
 
-  const [editMode, setEditMode] = useState(false);
-  const [filter, setFilter] = useState("ALL");
-
-  // 🔹 Standard competitions with names + URLs
-  const standardCompetitions = [
-    {
-      name: "Top14",
-      url: "webcal://ics.ecal.com/ecal-sub/68c1b84538582c00081bd07b/Ligue%20Nationale%20De%20Rugby.ics",
-    },
-    {
-      name: "Premiership",
-      url: "webcal://ics.ecal.com/ecal-sub/68b80d5c0fb910000876112c/Premiership%20Rugby%20.ics",
-    },
-    {
-      name: "URC",
-      url: "webcal://ics.ecal.com/ecal-sub/68b810331c6d630008c085ef/United%20Rugby%20Championship.ics",
-    },
-    {
-      name: "Champions Cup",
-      url: "webcal://ics.ecal.com/ecal-sub/68b810640fb9100008761171/EPCR.ics",
-    },
-    {
-      name: "Challenge Cup",
-      url: "webcal://ics.ecal.com/ecal-sub/68b8108f1c6d630008c085fc/EPCR.ics",
-    },
-    {
-      name: "Autumn Internationals",
-      url: "webcal://ics.ecal.com/ecal-sub/68d28502c4f7f8000894f5b2/Six%20Nations%20Rugby.ics",
-    },
-    {
-      name: "Six Nations",
-      url: "webcal://ics.ecal.com/ecal-sub/68d28557f028450008896c2a/Six%20Nations%20Rugby.ics",
-    },
-  ];
-
+  // ✅ Load competitions, matches, users
   useEffect(() => {
-    loadData();
+    loadCompetitions();
+    loadMatches();
+    loadUsers();
   }, []);
 
-  async function loadData() {
+  const loadCompetitions = async () => {
     try {
-      const comps = await apiFetch("/competitions");
-      setCompetitions(comps);
-
-      const matchList = await apiFetch("/matches");
-      const withPreds = matchList.map((m) => ({ ...m, predictionsCount: 0 }));
-      setMatches(withPreds);
+      const data = await apiFetch("/competitions");
+      setCompetitions(data);
     } catch (err) {
-      console.error("❌ Failed to load data:", err);
+      console.error("❌ Failed to load competitions", err);
     }
-  }
+  };
 
-  // 🔄 Recalculate results + leaderboard via server scrape
-  async function handleRecalculate() {
+  const loadMatches = async () => {
     try {
-      const result = await apiFetch("/admin/update-results", {
+      const data = await apiFetch("/matches");
+      setMatches(data);
+    } catch (err) {
+      console.error("❌ Failed to load matches", err);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const data = await apiFetch("/users");
+      setUsers(data);
+    } catch (err) {
+      console.error("❌ Failed to load users", err);
+    }
+  };
+
+  // ✅ Add competition
+  const handleAddCompetition = async () => {
+    if (!newCompetition.name || !newCompetition.url) return;
+    try {
+      const data = await apiFetch("/competitions", {
         method: "POST",
+        body: JSON.stringify(newCompetition),
       });
-      setSnackbar({
-        open: true,
-        message: `✅ ${result.updated} matches updated`,
-        severity: "success",
-      });
-      loadData();
+      setCompetitions([...competitions, data]);
+      setNewCompetition({ name: "", url: "", color: "#1976d2" });
     } catch (err) {
-      console.error("❌ Failed to recalc:", err);
-      setSnackbar({
-        open: true,
-        message: "❌ Failed to update results",
-        severity: "error",
-      });
+      console.error("❌ Failed to add competition", err);
     }
-  }
+  };
 
-  // 🚨 Force logout all users
-  async function handleForceLogout() {
+  // ✅ Add user
+  const handleAddUser = async () => {
+    if (!newUser.firstname || !newUser.surname || !newUser.email) return;
     try {
-      const res = await apiFetch("/admin/force-logout", {
+      const data = await apiFetch("/users", {
         method: "POST",
+        body: JSON.stringify(newUser),
       });
-      setSnackbar({
-        open: true,
-        message: `🚨 All users logged out. New session version: ${res.sessionVersion}`,
-        severity: "warning",
-      });
+      setUsers([...users, data]);
+      setNewUser({ firstname: "", surname: "", email: "", isAdmin: false });
     } catch (err) {
-      console.error("❌ Force logout failed:", err);
-      setSnackbar({
-        open: true,
-        message: "❌ Failed to force logout users",
-        severity: "error",
-      });
+      console.error("❌ Failed to add user", err);
     }
-  }
+  };
 
-  async function handleAddCompetition() {
+  // ✅ Update competition inline
+  const handleUpdateCompetition = async (id, field, value) => {
+    const updated = competitions.map((c) =>
+      c.id === id ? { ...c, [field]: value } : c
+    );
+    setCompetitions(updated);
+  };
+
+  const saveCompetition = async (competition) => {
     try {
-      let safeUrl = newComp.url.trim();
-      if (safeUrl.startsWith("webcal://")) {
-        safeUrl = safeUrl.replace("webcal://", "https://");
-      }
-
-      const result = await apiFetch("/competitions", {
-        method: "POST",
-        body: JSON.stringify({
-          name: newComp.name,
-          url: safeUrl,
-          color: newComp.color,
-        }),
-      });
-
-      if (result.success) {
-        setNewComp({ name: "", url: "", color: "#1976d2" });
-        loadData();
-        setSnackbar({
-          open: true,
-          message: `✅ Competition "${newComp.name}" added`,
-          severity: "success",
-        });
-      } else {
-        setSnackbar({
-          open: true,
-          message: "❌ Error adding competition",
-          severity: "error",
-        });
-      }
-    } catch (err) {
-      console.error("❌ Error adding competition:", err);
-    }
-  }
-
-  async function handleUpdateCompetition(c) {
-    try {
-      await apiFetch(`/competitions/${c.id}`, {
+      await apiFetch(`/competitions/${competition.id}`, {
         method: "PUT",
-        body: JSON.stringify(c),
-      });
-      loadData();
-      setSnackbar({
-        open: true,
-        message: `✅ Competition "${c.name}" updated`,
-        severity: "success",
+        body: JSON.stringify(competition),
       });
     } catch (err) {
-      console.error("❌ Error updating competition:", err);
+      console.error("❌ Failed to save competition", err);
     }
-  }
+  };
 
-  async function handleRefreshCompetition(compId) {
+  const deleteCompetition = async (id) => {
     try {
-      await apiFetch(`/competitions/${compId}/refresh`, { method: "POST" });
-      loadData();
-      setSnackbar({
-        open: true,
-        message: "🔄 Competition refreshed",
-        severity: "info",
-      });
+      await apiFetch(`/competitions/${id}`, { method: "DELETE" });
+      setCompetitions(competitions.filter((c) => c.id !== id));
     } catch (err) {
-      console.error("❌ Error refreshing competition:", err);
+      console.error("❌ Failed to delete competition", err);
     }
-  }
+  };
 
-  async function handleDeleteCompetition(compId) {
-    if (!window.confirm("Delete this competition?")) return;
-    try {
-      await apiFetch(`/competitions/${compId}`, { method: "DELETE" });
-      loadData();
-      setSnackbar({
-        open: true,
-        message: "🗑️ Competition deleted",
-        severity: "warning",
-      });
-    } catch (err) {
-      console.error("❌ Error deleting competition:", err);
-    }
-  }
+  // ✅ Update user inline
+  const handleUpdateUser = async (id, field, value) => {
+    const updated = users.map((u) =>
+      u.id === id ? { ...u, [field]: value } : u
+    );
+    setUsers(updated);
+  };
 
-  // 🔹 Winner & Margin editing
-  async function handleSetWinner(matchId, winner) {
-    const match = matches.find((m) => m.id === matchId);
-    if (!match) return;
-    const updated = { ...match, result: { ...match.result, winner } };
+  const saveUser = async (user) => {
     try {
-      await apiFetch(`/matches/${matchId}`, {
+      await apiFetch(`/users/${user.id}`, {
         method: "PUT",
-        body: JSON.stringify(updated),
+        body: JSON.stringify(user),
       });
-      setMatches((prev) => prev.map((m) => (m.id === matchId ? updated : m)));
     } catch (err) {
-      console.error("❌ Error updating winner:", err);
+      console.error("❌ Failed to save user", err);
     }
-  }
+  };
 
-  async function handleSetMargin(matchId, margin) {
-    const match = matches.find((m) => m.id === matchId);
-    if (!match) return;
-    const updated = {
-      ...match,
-      result: { ...match.result, margin: parseInt(margin, 10) || null },
-    };
+  const deleteUser = async (id) => {
     try {
-      await apiFetch(`/matches/${matchId}`, {
-        method: "PUT",
-        body: JSON.stringify(updated),
-      });
-      setMatches((prev) => prev.map((m) => (m.id === matchId ? updated : m)));
+      await apiFetch(`/users/${id}`, { method: "DELETE" });
+      setUsers(users.filter((u) => u.id !== id));
     } catch (err) {
-      console.error("❌ Error updating margin:", err);
+      console.error("❌ Failed to delete user", err);
     }
-  }
+  };
 
-  const filteredMatches =
-    filter === "ALL"
-      ? matches
-      : matches.filter((m) => m.competitionName === filter);
-
-  const columns = [
-    {
-      field: "competition",
-      headerName: "Competition",
-      flex: 1,
-      renderCell: (params) => (
-        <Chip
-          label={params.row.competitionName}
-          sx={{
-            bgcolor: params.row.competitionColor || "#888",
-            color: "white",
-          }}
-          size="small"
-        />
-      ),
-    },
-    {
-      field: "teamA",
-      headerName: "Team A",
-      flex: 1,
-      renderCell: (params) => {
-        const isWinner = params.row.result?.winner === params.row.teamA;
-        return (
-          <Chip
-            label={params.row.teamA}
-            clickable={editMode}
-            onClick={
-              editMode
-                ? () => handleSetWinner(params.row.id, params.row.teamA)
-                : undefined
-            }
-            sx={{
-              fontWeight: isWinner ? "bold" : "normal",
-              bgcolor: isWinner ? "success.main" : undefined,
-              color: isWinner ? "white" : "inherit",
-            }}
-          />
-        );
-      },
-    },
-    {
-      field: "teamB",
-      headerName: "Team B",
-      flex: 1,
-      renderCell: (params) => {
-        const isWinner = params.row.result?.winner === params.row.teamB;
-        return (
-          <Chip
-            label={params.row.teamB}
-            clickable={editMode}
-            onClick={
-              editMode
-                ? () => handleSetWinner(params.row.id, params.row.teamB)
-                : undefined
-            }
-            sx={{
-              fontWeight: isWinner ? "bold" : "normal",
-              bgcolor: isWinner ? "success.main" : undefined,
-              color: isWinner ? "white" : "inherit",
-            }}
-          />
-        );
-      },
-    },
-    {
-      field: "kickoff",
-      headerName: "Date/Time",
-      flex: 1.2,
-      valueFormatter: (params) =>
-        new Date(params.value).toLocaleString("en-GB"),
-    },
-    {
-      field: "margin",
-      headerName: "Margin",
-      flex: 0.5,
-      renderCell: (params) =>
-        editMode ? (
-          <TextField
-            size="small"
-            type="number"
-            value={params.row.result?.margin || ""}
-            onChange={(e) => handleSetMargin(params.row.id, e.target.value)}
-            sx={{ width: 70 }}
-          />
-        ) : (
-          params.row.result?.margin || "—"
-        ),
-    },
-    {
-      field: "predictionsCount",
-      headerName: "Predictions Submitted",
-      flex: 1,
-    },
-  ];
-
-  async function handleRowUpdate(newRow) {
+  // ✅ Force logout all users
+  const forceLogout = async () => {
     try {
-      return await apiFetch(`/matches/${newRow.id}`, {
-        method: "PUT",
-        body: JSON.stringify(newRow),
-      });
+      await apiFetch("/admin/force-logout", { method: "POST" });
+      alert("All users logged out");
     } catch (err) {
-      console.error("❌ Error updating match:", err);
-      return newRow;
+      console.error("❌ Failed to force logout", err);
     }
-  }
+  };
+
+  // ==============================
+  // ✅ UI Rendering
+  // ==============================
 
   return (
-    <Container sx={{ mt: 2 }}>
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-        <Tooltip title="Recalculate Results & Leaderboard">
-          <IconButton color="secondary" onClick={handleRecalculate}>
-            <RefreshIcon />
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Admin Panel
+      </Typography>
+
+      {/* Toolbar buttons */}
+      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <Tooltip title="Recalculate Leaderboard">
+          <IconButton color="primary">
+            <ReplayIcon />
           </IconButton>
         </Tooltip>
-        <Tooltip title={editMode ? "Done Editing" : "Edit Results"}>
-          <IconButton onClick={() => setEditMode((prev) => !prev)}>
+        <Tooltip title="Edit Mode">
+          <IconButton color="secondary">
             <EditIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title="Force Logout All Users">
-          <IconButton color="error" onClick={handleForceLogout}>
-            <LogoutIcon />
+          <IconButton color="error" onClick={forceLogout}>
+            <ExitToAppIcon />
           </IconButton>
         </Tooltip>
-      </Stack>
+      </Box>
 
-      {/* 📌 Competition Filter */}
-      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
-        <Chip
-          label="ALL"
-          color={filter === "ALL" ? "primary" : "default"}
-          onClick={() => setFilter("ALL")}
-        />
-        {competitions.map((c) => (
-          <Chip
-            key={c.id}
-            label={c.name}
-            onClick={() => setFilter(c.name)}
-            sx={{
-              bgcolor: c.color || "#666",
-              color: "white",
-              opacity: filter === "ALL" || filter === c.name ? 1 : 0.5,
-            }}
-          />
-        ))}
-      </Stack>
-
-      {/* 📌 Competitions Accordion */}
-      <Accordion defaultExpanded={false} sx={{ mb: 3 }}>
+      {/* Competitions Accordion */}
+      <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>📌 Competitions</Typography>
+          <Typography>Competitions</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          <Stack spacing={2}>
-            {competitions.map((c) => (
-              <Paper
-                key={c.id}
-                sx={{ p: 2, display: "flex", alignItems: "center", gap: 2 }}
-              >
-                <Chip
-                  label={c.name}
-                  sx={{
-                    bgcolor: c.color || "#666",
-                    color: "white",
-                  }}
-                  size="small"
-                />
-                <TextField
-                  label="Name"
-                  size="small"
-                  value={c.name}
-                  onChange={(e) =>
-                    setCompetitions((prev) =>
-                      prev.map((comp) =>
-                        comp.id === c.id
-                          ? { ...comp, name: e.target.value }
-                          : comp
-                      )
-                    )
-                  }
-                />
-                <TextField
-                  label="Feed URL"
-                  size="small"
-                  value={c.url}
-                  onChange={(e) =>
-                    setCompetitions((prev) =>
-                      prev.map((comp) =>
-                        comp.id === c.id
-                          ? { ...comp, url: e.target.value }
-                          : comp
-                      )
-                    )
-                  }
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  type="color"
-                  size="small"
-                  value={c.color || "#1976d2"}
-                  onChange={(e) =>
-                    setCompetitions((prev) =>
-                      prev.map((comp) =>
-                        comp.id === c.id
-                          ? { ...comp, color: e.target.value }
-                          : comp
-                      )
-                    )
-                  }
-                  sx={{ width: 80 }}
-                />
-                <IconButton onClick={() => handleRefreshCompetition(c.id)}>
-                  <RefreshIcon />
-                </IconButton>
-                <IconButton
-                  color="error"
-                  onClick={() => handleDeleteCompetition(c.id)}
-                >
-                  <DeleteIcon />
-                </IconButton>
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={() => handleUpdateCompetition(c)}
-                >
-                  Save
-                </Button>
-              </Paper>
-            ))}
+          {/* Add competition row */}
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <TextField
+              label="Competition Name"
+              value={newCompetition.name}
+              onChange={(e) =>
+                setNewCompetition({ ...newCompetition, name: e.target.value })
+              }
+            />
+            <TextField
+              label="Feed URL"
+              value={newCompetition.url}
+              onChange={(e) =>
+                setNewCompetition({ ...newCompetition, url: e.target.value })
+              }
+              sx={{ flex: 1 }}
+            />
+            <IconButton color="primary" onClick={handleAddCompetition}>
+              <AddIcon />
+            </IconButton>
+          </Box>
 
-            {/* ➕ Add Competition */}
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="subtitle1">➕ Add Competition</Typography>
-              <Stack direction="row" spacing={1} mb={2} flexWrap="wrap">
-                {standardCompetitions.map((comp) => (
-                  <Chip
-                    key={comp.name}
-                    label={comp.name}
-                    onClick={() =>
-                      setNewComp({
-                        name: comp.name,
-                        url: comp.url,
-                        color: "#1976d2",
-                      })
-                    }
-                    sx={{ bgcolor: "#1976d2", color: "white" }}
-                  />
-                ))}
-              </Stack>
-              <Stack direction="row" spacing={2} mt={1}>
-                <TextField
-                  label="Name"
-                  size="small"
-                  value={newComp.name}
-                  onChange={(e) =>
-                    setNewComp((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                />
-                <TextField
-                  label="ICS Feed URL"
-                  size="small"
-                  value={newComp.url}
-                  onChange={(e) =>
-                    setNewComp((prev) => ({ ...prev, url: e.target.value }))
-                  }
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  type="color"
-                  size="small"
-                  value={newComp.color}
-                  onChange={(e) =>
-                    setNewComp((prev) => ({ ...prev, color: e.target.value }))
-                  }
-                  sx={{ width: 80 }}
-                />
-                <Button variant="contained" onClick={handleAddCompetition}>
-                  Add
-                </Button>
-              </Stack>
-            </Paper>
-          </Stack>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Feed</TableCell>
+                <TableCell>Color</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {competitions.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell>
+                    <TextField
+                      value={c.name}
+                      onChange={(e) =>
+                        handleUpdateCompetition(c.id, "name", e.target.value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      value={c.url}
+                      onChange={(e) =>
+                        handleUpdateCompetition(c.id, "url", e.target.value)
+                      }
+                      fullWidth
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      type="color"
+                      value={c.color}
+                      onChange={(e) =>
+                        handleUpdateCompetition(c.id, "color", e.target.value)
+                      }
+                      sx={{ width: 50 }}
+                    />
+                  </TableCell>
+                  <TableCell align="right">
+                    <Tooltip title="Save">
+                      <IconButton onClick={() => saveCompetition(c)}>
+                        <SaveIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton onClick={() => deleteCompetition(c.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </AccordionDetails>
       </Accordion>
 
-      {/* 📋 Matches Table */}
-      <Paper sx={{ height: 600 }}>
-        <DataGrid
-          rows={filteredMatches}
-          columns={columns}
-          getRowId={(row) => row.id}
-          processRowUpdate={handleRowUpdate}
-          disableRowSelectionOnClick
-          experimentalFeatures={{ newEditingApi: true }}
-          pageSizeOptions={[10, 25, 50]}
-          initialState={{
-            sorting: {
-              sortModel: [{ field: "kickoff", sort: "asc" }],
-            },
-          }}
-        />
-      </Paper>
+      {/* Matches Accordion */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Matches</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <TextField
+              placeholder="Search matches..."
+              value={matchSearch}
+              onChange={(e) => setMatchSearch(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1 }} />,
+              }}
+            />
+            <Button
+              variant="outlined"
+              onClick={() => setShowCompleted(!showCompleted)}
+            >
+              {showCompleted ? "Hide Completed" : "Show Completed"}
+            </Button>
+            <Button variant="outlined" onClick={() => alert("Jump to today")}>
+              Jump to Today
+            </Button>
+          </Box>
 
-      {/* ✅ Snackbar for feedback */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Container>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Date</TableCell>
+                <TableCell>Competition</TableCell>
+                <TableCell>Team A</TableCell>
+                <TableCell>Team B</TableCell>
+                <TableCell>Winner</TableCell>
+                <TableCell>Margin</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {matches
+                .filter((m) =>
+                  `${m.teamA} ${m.teamB}`
+                    .toLowerCase()
+                    .includes(matchSearch.toLowerCase())
+                )
+                .map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell>{new Date(m.kickoff).toLocaleString()}</TableCell>
+                    <TableCell>{m.competitionName}</TableCell>
+                    <TableCell>{m.teamA}</TableCell>
+                    <TableCell>{m.teamB}</TableCell>
+                    <TableCell>{m.result || "-"}</TableCell>
+                    <TableCell>{m.margin || "-"}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </AccordionDetails>
+      </Accordion>
+
+      {/* Users Accordion */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Users</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          {/* Add user row */}
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <TextField
+              label="Firstname"
+              value={newUser.firstname}
+              onChange={(e) =>
+                setNewUser({ ...newUser, firstname: e.target.value })
+              }
+            />
+            <TextField
+              label="Surname"
+              value={newUser.surname}
+              onChange={(e) =>
+                setNewUser({ ...newUser, surname: e.target.value })
+              }
+            />
+            <TextField
+              label="Email"
+              value={newUser.email}
+              onChange={(e) =>
+                setNewUser({ ...newUser, email: e.target.value })
+              }
+              sx={{ flex: 1 }}
+            />
+            <Checkbox
+              checked={newUser.isAdmin}
+              onChange={(e) =>
+                setNewUser({ ...newUser, isAdmin: e.target.checked })
+              }
+            />
+            <IconButton color="primary" onClick={handleAddUser}>
+              <AddIcon />
+            </IconButton>
+          </Box>
+
+          {/* Search users */}
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <TextField
+              placeholder="Search users..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1 }} />,
+              }}
+            />
+          </Box>
+
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Firstname</TableCell>
+                <TableCell>Surname</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Admin</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users
+                .filter(
+                  (u) =>
+                    u.firstname.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.surname.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.email.toLowerCase().includes(userSearch.toLowerCase())
+                )
+                .map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell>
+                      <TextField
+                        value={u.firstname}
+                        onChange={(e) =>
+                          handleUpdateUser(u.id, "firstname", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={u.surname}
+                        onChange={(e) =>
+                          handleUpdateUser(u.id, "surname", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={u.email}
+                        onChange={(e) =>
+                          handleUpdateUser(u.id, "email", e.target.value)
+                        }
+                        fullWidth
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Checkbox
+                        checked={u.isAdmin}
+                        onChange={(e) =>
+                          handleUpdateUser(u.id, "isAdmin", e.target.checked)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Save">
+                        <IconButton onClick={() => saveUser(u)}>
+                          <SaveIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton onClick={() => deleteUser(u.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </AccordionDetails>
+      </Accordion>
+    </Box>
   );
 }
 
