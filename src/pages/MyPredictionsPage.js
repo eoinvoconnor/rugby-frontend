@@ -28,7 +28,7 @@ function MyPredictionsPage() {
 
   async function loadPredictions() {
     try {
-      const data = await apiFetch("/predictions");
+      const data = await apiFetch("/predictions"); // ✅ now userId comes from token
       setPredictions(data);
     } catch (err) {
       console.error("❌ Failed to load predictions:", err);
@@ -62,7 +62,7 @@ function MyPredictionsPage() {
 
   // Group by date
   const grouped = filteredPredictions.reduce((acc, pred) => {
-    const dateKey = dayjs(pred.date).format("YYYY-MM-DD");
+    const dateKey = dayjs(pred.kickoff).format("YYYY-MM-DD"); // ✅ use kickoff from matches
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(pred);
     return acc;
@@ -119,7 +119,7 @@ function MyPredictionsPage() {
 
           {grouped[dateKey].map((p) => (
             <Box
-              key={p._id}
+              key={`${p.userId}-${p.matchId}`} // ✅ better key for uniqueness
               sx={{
                 display: "flex",
                 alignItems: "center",
@@ -133,7 +133,7 @@ function MyPredictionsPage() {
                 {p.teamA} vs {p.teamB}
               </Typography>
               <Chip
-                label={`${p.predictedWinner} by ${p.predictedMargin}`}
+                label={`${p.predictedWinner} by ${p.margin}`}
                 sx={{
                   bgcolor: p.color,
                   color: "white",
