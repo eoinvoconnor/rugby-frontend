@@ -1,5 +1,5 @@
 // src/pages/MatchesPage.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Box,
   Button,
@@ -13,10 +13,10 @@ import {
 import LockIcon from "@mui/icons-material/Lock";
 import dayjs from "dayjs";
 import { apiFetch } from "../api/api";
-import { useUser } from "../context/UserContext";
+import { UserContext } from "../context/UserContext"; // ✅ fixed import
 
 function MatchesPage() {
-  const { user } = useUser();
+  const { user } = useContext(UserContext); // ✅ use context directly
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState({});
   const [loading, setLoading] = useState(true);
@@ -80,7 +80,7 @@ function MatchesPage() {
 
   const handleSubmit = async (clusterMatches) => {
     try {
-      const token = localStorage.getItem("token"); // ✅ get JWT
+      const token = localStorage.getItem("token");
       for (const match of clusterMatches) {
         const pred = predictions[match.id];
         if (!pred) continue;
@@ -88,7 +88,7 @@ function MatchesPage() {
         await apiFetch("/predictions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`, // ✅ include token
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             userId: user.id,
