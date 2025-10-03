@@ -37,7 +37,7 @@ function MatchesPage() {
         setMatches(sorted);
 
         if (user) {
-          const preds = await apiFetch(`/predictions/${user.id}`);
+          const preds = await apiFetch("/predictions");
           const mapped = {};
           preds.forEach((p) => {
             mapped[p.matchId] = { team: p.predictedWinner, margin: p.margin };

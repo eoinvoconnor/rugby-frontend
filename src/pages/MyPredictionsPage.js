@@ -28,7 +28,7 @@ function MyPredictionsPage() {
 
   async function loadPredictions() {
     try {
-      const data = await apiFetch(`/predictions/${user.id}`);
+      const data = await apiFetch("/predictions");
       setPredictions(data);
     } catch (err) {
       console.error("❌ Failed to load predictions:", err);
