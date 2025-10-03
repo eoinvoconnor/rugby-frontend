@@ -12,11 +12,10 @@ import {
   FormControlLabel,
   Checkbox,
 } from "@mui/material";
-import { apiFetch } from "../api/api"; // ✅ fixed import
 
 function UserLogin() {
   const navigate = useNavigate();
-  const { setUser } = useUser();
+  const { loginUser } = useUser();
 
   const [email, setEmail] = useState("");
   const [firstname, setFirstname] = useState("");
@@ -33,23 +32,11 @@ function UserLogin() {
     }
 
     try {
-      const res = await apiFetch("/users/login", {
-        method: "POST",
-        body: JSON.stringify({ email, firstname, surname }),
-      });
+      // ✅ Use loginUser from context
+      const user = await loginUser(email, "password-not-used", rememberMe);
 
-      if (!res || !res.user || !res.token) {
+      if (!user) {
         throw new Error("Login failed: missing token or user data.");
-      }
-
-      const userData = { ...res.user, token: res.token };
-
-      setUser(userData);
-
-      if (rememberMe) {
-        localStorage.setItem("user", JSON.stringify(userData));
-      } else {
-        sessionStorage.setItem("user", JSON.stringify(userData));
       }
 
       // ✅ Redirect to Matches page after login/register
