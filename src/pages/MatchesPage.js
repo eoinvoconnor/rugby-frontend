@@ -17,7 +17,7 @@ import { useContext } from "react";
 import { UserContext } from "../context/UserContext";
 
 function MatchesPage() {
-  const { user, login, logout } = useContext(UserContext);
+  const { user, token } = useContext(UserContext);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState({});
   const [loading, setLoading] = useState(true);
@@ -81,7 +81,7 @@ function MatchesPage() {
 
   const handleSubmit = async (clusterMatches) => {
     try {
-      const token = localStorage.getItem("token");
+      const authToken = token || localStorage.getItem("token");
       for (const match of clusterMatches) {
         const pred = predictions[match.id];
         if (!pred) continue;
