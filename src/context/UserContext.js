@@ -1,6 +1,7 @@
 // src/context/UserContext.js
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 
+// ✅ Create the context once
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
@@ -49,3 +50,6 @@ export const UserProvider = ({ children }) => {
     </UserContext.Provider>
   );
 };
+
+// ✅ Hook export for easy use in components
+export const useUser = () => useContext(UserContext);
