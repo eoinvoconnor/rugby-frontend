@@ -1,5 +1,5 @@
 // src/pages/AdminPage.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Box,
   Typography,
@@ -25,13 +25,13 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import SearchIcon from "@mui/icons-material/Search";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import EditIcon from "@mui/icons-material/Edit";
-import LockResetIcon from "@mui/icons-material/LockReset";
 
 import { apiFetch } from "../api/api";
-import { useContext } from "react";
-const { user, login, logout } = useContext(UserContext);
+import { UserContext } from "../context/UserContext";
+
 function AdminPage() {
-  const { user, logoutUser } = useUser();
+  // ✅ Hooks must be inside the component
+  const { user, logout } = useContext(UserContext);
 
   // ✅ State for competitions
   const [competitions, setCompetitions] = useState([]);
@@ -90,7 +90,6 @@ function AdminPage() {
     }
   };
 
-  // ✅ Add competition
   const handleAddCompetition = async () => {
     if (!newCompetition.name || !newCompetition.url) return;
     try {
@@ -105,7 +104,6 @@ function AdminPage() {
     }
   };
 
-  // ✅ Add user
   const handleAddUser = async () => {
     if (!newUser.firstname || !newUser.surname || !newUser.email) return;
     try {
@@ -120,7 +118,6 @@ function AdminPage() {
     }
   };
 
-  // ✅ Update competition inline
   const handleUpdateCompetition = async (id, field, value) => {
     const updated = competitions.map((c) =>
       c.id === id ? { ...c, [field]: value } : c
@@ -148,7 +145,6 @@ function AdminPage() {
     }
   };
 
-  // ✅ Update user inline
   const handleUpdateUser = async (id, field, value) => {
     const updated = users.map((u) =>
       u.id === id ? { ...u, [field]: value } : u
@@ -176,7 +172,6 @@ function AdminPage() {
     }
   };
 
-  // ✅ Force logout all users
   const forceLogout = async () => {
     try {
       await apiFetch("/admin/force-logout", { method: "POST" });
@@ -186,17 +181,13 @@ function AdminPage() {
     }
   };
 
-  // ==============================
-  // ✅ UI Rendering
-  // ==============================
-
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
         Admin Panel
       </Typography>
 
-      {/* Toolbar buttons */}
+      {/* Toolbar */}
       <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
         <Tooltip title="Recalculate Leaderboard">
           <IconButton color="primary">
@@ -215,13 +206,12 @@ function AdminPage() {
         </Tooltip>
       </Box>
 
-      {/* Competitions Accordion */}
+      {/* === Competitions === */}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography>Competitions</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          {/* Add competition row */}
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
             <TextField
               label="Competition Name"
@@ -301,7 +291,7 @@ function AdminPage() {
         </AccordionDetails>
       </Accordion>
 
-      {/* Matches Accordion */}
+      {/* === Matches === */}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography>Matches</Typography>
@@ -360,13 +350,12 @@ function AdminPage() {
         </AccordionDetails>
       </Accordion>
 
-      {/* Users Accordion */}
+      {/* === Users === */}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography>Users</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          {/* Add user row */}
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
             <TextField
               label="Firstname"
@@ -401,7 +390,6 @@ function AdminPage() {
             </IconButton>
           </Box>
 
-          {/* Search users */}
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
             <TextField
               placeholder="Search users..."
@@ -427,8 +415,12 @@ function AdminPage() {
               {users
                 .filter(
                   (u) =>
-                    u.firstname.toLowerCase().includes(userSearch.toLowerCase()) ||
-                    u.surname.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.firstname
+                      .toLowerCase()
+                      .includes(userSearch.toLowerCase()) ||
+                    u.surname
+                      .toLowerCase()
+                      .includes(userSearch.toLowerCase()) ||
                     u.email.toLowerCase().includes(userSearch.toLowerCase())
                 )
                 .map((u) => (
