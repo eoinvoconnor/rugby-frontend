@@ -16,6 +16,8 @@ import {
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { apiFetch } from "../api/api"; // ✅ fixed import
+import { useUser } from "../context/UserContext";
+
 
 function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState([]);
