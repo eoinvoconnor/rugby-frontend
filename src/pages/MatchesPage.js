@@ -13,10 +13,11 @@ import {
 import LockIcon from "@mui/icons-material/Lock";
 import dayjs from "dayjs";
 import { apiFetch } from "../api/api";
-import { UserContext } from "../context/UserContext"; // ✅ fixed import
+import { useContext } from "react";
+import { UserContext } from "../context/UserContext";
 
 function MatchesPage() {
-  const { user } = useContext(UserContext); // ✅ use context directly
+  const { user, login, logout } = useContext(UserContext);
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState({});
   const [loading, setLoading] = useState(true);

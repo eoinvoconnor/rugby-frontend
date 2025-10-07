@@ -28,8 +28,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import LockResetIcon from "@mui/icons-material/LockReset";
 
 import { apiFetch } from "../api/api";
-import { useUser } from "../context/UserContext";
-
+import { useContext } from "react";
+const { user, login, logout } = useContext(UserContext);
 function AdminPage() {
   const { user, logoutUser } = useUser();
 

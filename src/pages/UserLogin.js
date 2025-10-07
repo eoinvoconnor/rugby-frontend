@@ -1,7 +1,8 @@
 // src/pages/UserLogin.js
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "../context/UserContext";
+import { useContext } from "react";
+import { UserContext } from "../context/UserContext";
 import {
   Box,
   Button,
@@ -16,7 +17,7 @@ export default function UserLogin() {
   const [firstname, setFirstname] = useState("");
   const [surname, setSurname] = useState("");
   const [error, setError] = useState("");
-  const { login } = useUser(); // ✅ use context login
+  const { user, login, logout } = useContext(UserContext);
   const navigate = useNavigate();
 
   const handleLogin = async () => {
