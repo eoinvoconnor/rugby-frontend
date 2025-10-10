@@ -105,16 +105,33 @@ function AdminPage() {
   };
 
   const handleAddUser = async () => {
-    if (!newUser.firstname || !newUser.surname || !newUser.email) return;
+    if (!newUser.firstname || !newUser.surname || !newUser.email) {
+      alert("⚠️ Please fill in all required fields (firstname, surname, email).");
+      return;
+    }
+  
     try {
-      const data = await apiFetch("/users", {
+      const data = await apiFetch("/api/users", {
         method: "POST",
         body: JSON.stringify(newUser),
       });
-      setUsers([...users, data]);
+  
+      if (!data || data.error) {
+        alert(`❌ Failed to add user: ${data?.error || "Unknown error"}`);
+        return;
+      }
+  
+      alert(`✅ User "${data.firstname} ${data.surname}" added successfully!`);
+  
+      // Reset form
       setNewUser({ firstname: "", surname: "", email: "", isAdmin: false });
+  
+      // Refresh user list from backend to ensure consistency
+      const refreshed = await apiFetch("/api/users");
+      setUsers(refreshed);
     } catch (err) {
       console.error("❌ Failed to add user", err);
+      alert("Error adding user — check console for details.");
     }
   };
 
