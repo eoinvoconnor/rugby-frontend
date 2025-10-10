@@ -111,7 +111,7 @@ function AdminPage() {
     }
   
     try {
-      const data = await apiFetch("/api/users", {
+      const data = await apiFetch("/users", {
         method: "POST",
         body: JSON.stringify(newUser),
       });
@@ -127,7 +127,7 @@ function AdminPage() {
       setNewUser({ firstname: "", surname: "", email: "", isAdmin: false });
   
       // Refresh user list from backend to ensure consistency
-      const refreshed = await apiFetch("/api/users");
+      const refreshed = await apiFetch("/users");
       setUsers(refreshed);
     } catch (err) {
       console.error("❌ Failed to add user", err);
