@@ -341,7 +341,11 @@ function AdminPage() {
                     <TableCell>{m.competitionName}</TableCell>
                     <TableCell>{m.teamA}</TableCell>
                     <TableCell>{m.teamB}</TableCell>
-                    <TableCell>{m.result || "-"}</TableCell>
+                    <TableCell>
+                        {m.result
+                        ? `${m.result.winner || "-"} (${m.result.margin ?? "-"})`
+                         : "-"}
+                   </TableCell>
                     <TableCell>{m.margin || "-"}</TableCell>
                   </TableRow>
                 ))}
