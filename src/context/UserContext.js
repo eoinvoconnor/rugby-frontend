@@ -1,14 +1,13 @@
 // src/context/UserContext.js
 import React, { createContext, useState, useEffect, useContext } from "react";
 
-// ✅ Create the context once
 export const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
 
-  // 🔹 Load user + token from localStorage on first mount
+  // 🔹 Restore user + token from localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     const savedToken = localStorage.getItem("token");
@@ -26,16 +25,25 @@ export const UserProvider = ({ children }) => {
     }
   }, []);
 
-  // 🔹 Login: save both to state + localStorage
+  // 🔹 Login helper — store both user + token
   const login = (userData, jwtToken) => {
     setUser(userData);
-    setToken(jwtToken);
+
+    // Support both explicit token and fallback (if backend sets it)
+    const finalToken = jwtToken || userData?.token || token;
+    if (finalToken) {
+      setToken(finalToken);
+      localStorage.setItem("token", finalToken);
+      console.log("🔐 Token saved during login");
+    } else {
+      console.warn("⚠️ Login called without token");
+    }
+
     localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("token", jwtToken);
     console.log("✅ Logged in:", userData);
   };
 
-  // 🔹 Logout: clear state + localStorage
+  // 🔹 Logout helper — clear everything
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -51,5 +59,5 @@ export const UserProvider = ({ children }) => {
   );
 };
 
-// ✅ Hook export for easy use in components
+// ✅ Hook for child components
 export const useUser = () => useContext(UserContext);
