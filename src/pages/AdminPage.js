@@ -31,6 +31,9 @@ import { apiFetch } from "../api/api";
 import { UserContext } from "../context/UserContext";
 
 function AdminPage() {
+  useEffect(() => {
+    document.title = "Admin Panel";
+  }, []);
   // ✅ Hooks must be inside the component
   const { user, logout } = useContext(UserContext);
 
@@ -212,7 +215,7 @@ function AdminPage() {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Admin Panel
+        Admin
       </Typography>
 
       {/* Toolbar */}
