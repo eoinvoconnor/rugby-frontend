@@ -452,8 +452,16 @@ const deleteMatch = async (id) => {
               (m.competitionName || "").toLowerCase().includes(q)
             );
           })
-          .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))
-          .map((m) => (
+          .sort((a, b) => {
+            const dir = sortConfig.dir === "asc" ? 1 : -1;
+            if (sortConfig.key === "kickoff") {
+              return (new Date(a.kickoff) - new Date(b.kickoff)) * dir;
+            }
+            if (a[sortConfig.key] < b[sortConfig.key]) return -1 * dir;
+            if (a[sortConfig.key] > b[sortConfig.key]) return 1 * dir;
+            return 0;
+          })
+                    .map((m) => (
             <TableRow key={m.id}>
               <TableCell>
                 <TextField
