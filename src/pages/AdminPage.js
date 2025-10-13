@@ -444,16 +444,22 @@ const deleteMatch = async (id) => {
   </TableRow>
 </TableHead>
       <TableBody>
-        {matches
-          .filter((m) => {
-            const q = matchSearch.toLowerCase();
-            return (
-              m.teamA.toLowerCase().includes(q) ||
-              m.teamB.toLowerCase().includes(q) ||
-              (m.competitionName || "").toLowerCase().includes(q)
-            );
-          })
-          .sort((a, b) => {
+      {matches
+  .filter((m) => {
+    const q = matchSearch.toLowerCase();
+
+    // 🟢 Filter by search query
+    const matchesSearch =
+      m.teamA.toLowerCase().includes(q) ||
+      m.teamB.toLowerCase().includes(q) ||
+      (m.competitionName || "").toLowerCase().includes(q);
+
+    // 🟢 Filter by completion state
+    const isCompleted = m.result?.winner && m.result?.margin !== null;
+
+    // ✅ Only show completed if showCompleted is true
+    return matchesSearch && (showCompleted || !isCompleted);
+  })          .sort((a, b) => {
             const dir = sortConfig.dir === "asc" ? 1 : -1;
             if (sortConfig.key === "kickoff") {
               return (new Date(a.kickoff) - new Date(b.kickoff)) * dir;
