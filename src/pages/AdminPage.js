@@ -411,17 +411,37 @@ const deleteMatch = async (id) => {
     </Box>
 
     <Table size="small">
-      <TableHead>
-        <TableRow>
-          <TableCell>Date</TableCell>
-          <TableCell>Competition</TableCell>
-          <TableCell>Team A</TableCell>
-          <TableCell>Team B</TableCell>
-          <TableCell>Winner</TableCell>
-          <TableCell>Margin</TableCell>
-          <TableCell align="right">Actions</TableCell>
-        </TableRow>
-      </TableHead>
+    <TableHead>
+  <TableRow>
+    <TableCell
+      onClick={() => setSortConfig({ key: "kickoff", dir: sortConfig.dir === "asc" ? "desc" : "asc" })}
+      sx={{ cursor: "pointer" }}
+    >
+      Date {sortConfig.key === "kickoff" ? (sortConfig.dir === "asc" ? "↑" : "↓") : ""}
+    </TableCell>
+    <TableCell
+      onClick={() => setSortConfig({ key: "competitionName", dir: sortConfig.dir === "asc" ? "desc" : "asc" })}
+      sx={{ cursor: "pointer" }}
+    >
+      Competition {sortConfig.key === "competitionName" ? (sortConfig.dir === "asc" ? "↑" : "↓") : ""}
+    </TableCell>
+    <TableCell
+      onClick={() => setSortConfig({ key: "teamA", dir: sortConfig.dir === "asc" ? "desc" : "asc" })}
+      sx={{ cursor: "pointer" }}
+    >
+      Team A {sortConfig.key === "teamA" ? (sortConfig.dir === "asc" ? "↑" : "↓") : ""}
+    </TableCell>
+    <TableCell
+      onClick={() => setSortConfig({ key: "teamB", dir: sortConfig.dir === "asc" ? "desc" : "asc" })}
+      sx={{ cursor: "pointer" }}
+    >
+      Team B {sortConfig.key === "teamB" ? (sortConfig.dir === "asc" ? "↑" : "↓") : ""}
+    </TableCell>
+    <TableCell>Winner</TableCell>
+    <TableCell>Margin</TableCell>
+    <TableCell align="right">Actions</TableCell>
+  </TableRow>
+</TableHead>
       <TableBody>
         {matches
           .filter((m) => {
