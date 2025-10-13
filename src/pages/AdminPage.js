@@ -212,6 +212,52 @@ function AdminPage() {
     }
   };
 
+// --- MATCH MANAGEMENT ---
+
+const handleAddMatch = async () => {
+  if (!newMatch.teamA || !newMatch.teamB || !newMatch.kickoff || !newMatch.competitionId) {
+    alert("Please complete all fields before adding a match");
+    return;
+  }
+
+  try {
+    const data = await apiFetch("/matches", {
+      method: "POST",
+      body: JSON.stringify(newMatch),
+    });
+    setMatches([...matches, data]);
+    setNewMatch({ teamA: "", teamB: "", kickoff: "", competitionId: "" });
+  } catch (err) {
+    console.error("❌ Failed to add match", err);
+  }
+};
+
+const handleUpdateMatch = (id, field, value) => {
+  setMatches((prev) =>
+    prev.map((m) => (m.id === id ? { ...m, [field]: value } : m))
+  );
+};
+
+const saveMatch = async (match) => {
+  try {
+    await apiFetch(`/matches/${match.id}`, {
+      method: "PUT",
+      body: JSON.stringify(match),
+    });
+  } catch (err) {
+    console.error("❌ Failed to save match", err);
+  }
+};
+
+const deleteMatch = async (id) => {
+  try {
+    await apiFetch(`/matches/${id}`, { method: "DELETE" });
+    setMatches(matches.filter((m) => m.id !== id));
+  } catch (err) {
+    console.error("❌ Failed to delete match", err);
+  }
+};
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
