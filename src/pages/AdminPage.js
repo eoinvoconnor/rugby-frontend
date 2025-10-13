@@ -30,6 +30,13 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { apiFetch } from "../api/api";
 import { UserContext } from "../context/UserContext";
 
+const [newMatch, setNewMatch] = useState({
+  competitionId: "",
+  teamA: "",
+  teamB: "",
+  kickoff: "",
+});
+
 function AdminPage() {
   useEffect(() => {
     document.title = "Admin Panel";
