@@ -30,12 +30,6 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import { apiFetch } from "../api/api";
 import { UserContext } from "../context/UserContext";
 
-const [newMatch, setNewMatch] = useState({
-  competitionId: "",
-  teamA: "",
-  teamB: "",
-  kickoff: "",
-});
 
 function AdminPage() {
   useEffect(() => {
@@ -54,6 +48,12 @@ function AdminPage() {
 
   // ✅ State for matches
   const [matches, setMatches] = useState([]);
+  const [newMatch, setNewMatch] = useState({
+    competitionId: "",
+    teamA: "",
+    teamB: "",
+    kickoff: "",
+  });
   const [matchSearch, setMatchSearch] = useState("");
   const [showCompleted, setShowCompleted] = useState(true);
 
@@ -380,69 +380,134 @@ const deleteMatch = async (id) => {
         </AccordionDetails>
       </Accordion>
 
-      {/* === Matches === */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Matches</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-            <TextField
-              placeholder="Search matches..."
-              value={matchSearch}
-              onChange={(e) => setMatchSearch(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1 }} />,
-              }}
-            />
-            <Button
-              variant="outlined"
-              onClick={() => setShowCompleted(!showCompleted)}
-            >
-              {showCompleted ? "Hide Completed" : "Show Completed"}
-            </Button>
-            <Button variant="outlined" onClick={() => alert("Jump to today")}>
-              Jump to Today
-            </Button>
-          </Box>
+{/* === Matches === */}
+<Accordion>
+  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+    <Typography>Matches</Typography>
+  </AccordionSummary>
+  <AccordionDetails>
+    <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+      <TextField
+        label="Search matches..."
+        value={matchSearch}
+        onChange={(e) => setMatchSearch(e.target.value)}
+        InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1 }} /> }}
+      />
+      <Button
+        variant="outlined"
+        onClick={() => setShowCompleted(!showCompleted)}
+      >
+        {showCompleted ? "Hide Completed" : "Show Completed"}
+      </Button>
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={handleAddMatch}
+        startIcon={<AddIcon />}
+      >
+        Add Match
+      </Button>
+    </Box>
 
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Competition</TableCell>
-                <TableCell>Team A</TableCell>
-                <TableCell>Team B</TableCell>
-                <TableCell>Winner</TableCell>
-                <TableCell>Margin</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {matches
-                .filter((m) =>
-                  `${m.teamA} ${m.teamB}`
-                    .toLowerCase()
-                    .includes(matchSearch.toLowerCase())
-                )
-                .map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell>{new Date(m.kickoff).toLocaleString()}</TableCell>
-                    <TableCell>{m.competitionName}</TableCell>
-                    <TableCell>{m.teamA}</TableCell>
-                    <TableCell>{m.teamB}</TableCell>
-                    <TableCell>
-                        {m.result
-                        ? `${m.result.winner || "-"} (${m.result.margin ?? "-"})`
-                         : "-"}
-                   </TableCell>
-                    <TableCell>{m.margin || "-"}</TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </AccordionDetails>
-      </Accordion>
-
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          <TableCell>Date</TableCell>
+          <TableCell>Competition</TableCell>
+          <TableCell>Team A</TableCell>
+          <TableCell>Team B</TableCell>
+          <TableCell>Winner</TableCell>
+          <TableCell>Margin</TableCell>
+          <TableCell align="right">Actions</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {matches
+          .filter((m) => {
+            const q = matchSearch.toLowerCase();
+            return (
+              m.teamA.toLowerCase().includes(q) ||
+              m.teamB.toLowerCase().includes(q) ||
+              (m.competitionName || "").toLowerCase().includes(q)
+            );
+          })
+          .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))
+          .map((m) => (
+            <TableRow key={m.id}>
+              <TableCell>
+                <TextField
+                  type="datetime-local"
+                  value={new Date(m.kickoff).toISOString().slice(0, 16)}
+                  onChange={(e) =>
+                    handleUpdateMatch(m.id, "kickoff", e.target.value)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <Chip
+                  label={m.competitionName}
+                  sx={{
+                    backgroundColor: m.competitionColor || "#999",
+                    color: "#fff",
+                  }}
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  value={m.teamA}
+                  onChange={(e) =>
+                    handleUpdateMatch(m.id, "teamA", e.target.value)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  value={m.teamB}
+                  onChange={(e) =>
+                    handleUpdateMatch(m.id, "teamB", e.target.value)
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  value={m.result?.winner || ""}
+                  onChange={(e) =>
+                    handleUpdateMatch(m.id, "result", {
+                      ...m.result,
+                      winner: e.target.value,
+                    })
+                  }
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  value={m.result?.margin || ""}
+                  onChange={(e) =>
+                    handleUpdateMatch(m.id, "result", {
+                      ...m.result,
+                      margin: e.target.value,
+                    })
+                  }
+                />
+              </TableCell>
+              <TableCell align="right">
+                <Tooltip title="Save">
+                  <IconButton onClick={() => saveMatch(m)}>
+                    <SaveIcon color="success" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <IconButton onClick={() => deleteMatch(m.id)}>
+                    <DeleteIcon color="error" />
+                  </IconButton>
+                </Tooltip>
+              </TableCell>
+            </TableRow>
+          ))}
+      </TableBody>
+    </Table>
+  </AccordionDetails>
+</Accordion>
       {/* === Users === */}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
