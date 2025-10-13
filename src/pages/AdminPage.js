@@ -57,6 +57,7 @@ function AdminPage() {
   });
   const [matchSearch, setMatchSearch] = useState("");
   const [showCompleted, setShowCompleted] = useState(true);
+  const [sortConfig, setSortConfig] = useState({ key: "kickoff", dir: "asc" });
 
   // ✅ State for users
   const [users, setUsers] = useState([]);
