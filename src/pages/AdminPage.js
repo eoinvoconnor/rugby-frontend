@@ -455,8 +455,11 @@ const deleteMatch = async (id) => {
       (m.competitionName || "").toLowerCase().includes(q);
 
     // 🟢 Filter by completion state
-    const isCompleted = m.result?.winner && m.result?.margin !== null;
-
+// consider a match completed if it has a non-empty winner or a numeric margin
+const isCompleted =
+  m.result &&
+  ((typeof m.result.winner === "string" && m.result.winner.trim() !== "") ||
+   (m.result.margin !== null && m.result.margin !== undefined));
     // ✅ Only show completed if showCompleted is true
     return matchesSearch && (showCompleted || !isCompleted);
   })          .sort((a, b) => {
