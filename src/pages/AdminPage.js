@@ -456,13 +456,16 @@ const deleteMatch = async (id) => {
 
     // 🟢 Filter by completion state
 // consider a match completed if it has a non-empty winner or a numeric margin
+// 🧠 Consider a match completed if:
+// 1️⃣ It has a winner or a margin, OR
+// 2️⃣ The kickoff is in the past and there's no result data
 const isCompleted =
-  m.result &&
-  ((typeof m.result.winner === "string" && m.result.winner.trim() !== "") ||
-   (m.result.margin !== null && m.result.margin !== undefined));
-    // ✅ Only show completed if showCompleted is true
-    return matchesSearch && (showCompleted || !isCompleted);
-  })          .sort((a, b) => {
+  (m.result &&
+    ((typeof m.result.winner === "string" && m.result.winner.trim() !== "") ||
+      (m.result.margin !== null && m.result.margin !== undefined))) ||
+  new Date(m.kickoff) < new Date();      
+  
+  .sort((a, b) => {
             const dir = sortConfig.dir === "asc" ? 1 : -1;
             if (sortConfig.key === "kickoff") {
               return (new Date(a.kickoff) - new Date(b.kickoff)) * dir;
