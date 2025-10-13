@@ -468,7 +468,13 @@ const isCompleted =
   new Date(m.kickoff) < new Date();
 
     // ✅ Only show completed if showCompleted is true
-    return matchesSearch && (showCompleted || !isCompleted);
+    const now = new Date();
+    const isPast = new Date(m.kickoff) < now;
+    
+    if (matchViewMode === 1) return matchesSearch && !isPast; // Upcoming only
+    if (matchViewMode === 2) return matchesSearch && isPast;  // Completed only
+    return matchesSearch; // All matches
+        
   })          .sort((a, b) => {
             const dir = sortConfig.dir === "asc" ? 1 : -1;
             if (sortConfig.key === "kickoff") {
