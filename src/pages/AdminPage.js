@@ -56,7 +56,8 @@ function AdminPage() {
     kickoff: "",
   });
   const [matchSearch, setMatchSearch] = useState("");
-  const [showCompleted, setShowCompleted] = useState(true);
+// 0 = All, 1 = Upcoming only, 2 = Completed only
+  const [matchViewMode, setMatchViewMode] = useState(0);
   const [sortConfig, setSortConfig] = useState({ key: "kickoff", dir: "asc" });
 
   // ✅ State for users
@@ -395,13 +396,15 @@ const deleteMatch = async (id) => {
         onChange={(e) => setMatchSearch(e.target.value)}
         InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1 }} /> }}
       />
-      <Button
-        variant="outlined"
-        onClick={() => setShowCompleted(!showCompleted)}
-      >
-        {showCompleted ? "Hide Completed" : "Show Completed"}
-      </Button>
-      <Button
+<Button
+  variant="outlined"
+  color={matchViewMode === 1 ? "success" : matchViewMode === 2 ? "secondary" : "primary"}
+  onClick={() => setMatchViewMode((matchViewMode + 1) % 3)}
+>
+  {matchViewMode === 0 && "Showing: All Matches"}
+  {matchViewMode === 1 && "Showing: Upcoming Only"}
+  {matchViewMode === 2 && "Showing: Completed Only"}
+</Button>      <Button
         variant="contained"
         color="primary"
         onClick={handleAddMatch}
@@ -463,7 +466,7 @@ const isCompleted =
     ((typeof m.result.winner === "string" && m.result.winner.trim() !== "") ||
       (m.result.margin !== null && m.result.margin !== undefined))) ||
   new Date(m.kickoff) < new Date();
-  
+
     // ✅ Only show completed if showCompleted is true
     return matchesSearch && (showCompleted || !isCompleted);
   })          .sort((a, b) => {
