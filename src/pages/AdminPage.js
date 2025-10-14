@@ -361,20 +361,20 @@ const deleteMatch = async (id) => {
                   </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Refresh">
-  <IconButton onClick={refreshCompetitions}>
-    <RefreshIcon color="primary" />
-  </IconButton>
-</Tooltip>
-<Tooltip title="Save">
-  <IconButton onClick={() => saveCompetition(c)}>
-    <SaveIcon color="success" />
-  </IconButton>
-</Tooltip>
-<Tooltip title="Delete">
-  <IconButton onClick={() => deleteCompetition(c.id)}>
-    <DeleteIcon color="error" />
-  </IconButton>
-</Tooltip>
+                      <IconButton onClick={() => handleRefreshCompetition(c)}>
+                      <RefreshIcon color="primary" />
+                      </IconButton>
+                      </Tooltip>
+                    <Tooltip title="Save">
+                      <IconButton onClick={() => saveCompetition(c)}>
+                      <SaveIcon color="success" />
+                      </IconButton>
+                      </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton onClick={() => deleteCompetition(c.id)}>
+                      <DeleteIcon color="error" />
+                      </IconButton>
+                      </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
@@ -382,6 +382,20 @@ const deleteMatch = async (id) => {
           </Table>
         </AccordionDetails>
       </Accordion>
+
+      // refresh just one competition and show how many matches were (re)written
+const handleRefreshCompetition = async (comp) => {
+  try {
+    const res = await apiFetch(`/competitions/${comp.id}/refresh`, { method: "POST" });
+    // res = { message, added, replaced? }
+    alert(`✅ Refreshed "${comp.name}" — added ${res.added ?? 0} matches`);
+    // re-pull matches so Admin → Matches shows the new rows immediately
+    await loadMatches();
+  } catch (err) {
+    console.error("❌ Failed to refresh competition", err);
+    alert(`❌ Refresh failed for "${comp.name}"`);
+  }
+};
 
 {/* === Matches === */}
 <Accordion>
@@ -474,7 +488,7 @@ const isCompleted =
     if (matchViewMode === 1) return matchesSearch && !isPast; // Upcoming only
     if (matchViewMode === 2) return matchesSearch && isPast;  // Completed only
     return matchesSearch; // All matches
-        
+
   })          .sort((a, b) => {
             const dir = sortConfig.dir === "asc" ? 1 : -1;
             if (sortConfig.key === "kickoff") {
