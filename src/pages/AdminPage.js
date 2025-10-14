@@ -46,6 +46,7 @@ function AdminPage() {
     url: "",
     color: "#1976d2",
   });
+  const [showArchivedComps, setShowArchivedComps] = useState(false);
 
   // ✅ State for matches
   const [matches, setMatches] = useState([]);
@@ -79,7 +80,7 @@ function AdminPage() {
 
   const loadCompetitions = async () => {
     try {
-      const data = await apiFetch("/competitions");
+      const data = await apiFetch("/competitions?includeArchived=1");
       setCompetitions(data);
     } catch (err) {
       console.error("❌ Failed to load competitions", err);
@@ -320,6 +321,14 @@ const deleteMatch = async (id) => {
             </IconButton>
           </Box>
 
+          <Button
+            variant="outlined"
+            onClick={() => setShowArchivedComps(s => !s)}
+            sx={{ ml: 1 }}
+          >
+            {showArchivedComps ? "Hide archived" : "Show archived"}
+          </Button>
+
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -330,6 +339,9 @@ const deleteMatch = async (id) => {
               </TableRow>
             </TableHead>
             <TableBody>
+                <TableRow key={c.id} sx={{ opacity: c.isArchived ? 0.5 : 1 }}>
+                   {/* cells */}
+                </TableRow>
               {competitions.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell>
