@@ -187,6 +187,23 @@ function AdminPage() {
     }
   };
 
+      // refresh just one competition and show how many matches were (re)written
+      const handleRefreshCompetition = async (comp) => {
+        try {
+          const resp = await apiFetch(`/competitions/${comp.id}/refresh`, {
+            method: "POST",
+          });
+          const added = typeof resp?.added === "number" ? resp.added : 0;
+          alert(`✅ Refreshed "${comp.name}" — added ${added} matches`);
+          await loadMatches();
+          await loadCompetitions();
+        } catch (err) {
+          console.error("❌ Failed to refresh competition", err);
+          alert(`❌ Refresh failed for "${comp.name}"`);
+        }
+      };  // ✅ this closing brace and semicolon must be present
+      
+
   const handleUpdateUser = async (id, field, value) => {
     const updated = users.map((u) =>
       u.id === id ? { ...u, [field]: value } : u
@@ -339,9 +356,6 @@ const deleteMatch = async (id) => {
               </TableRow>
             </TableHead>
             <TableBody>
-                <TableRow key={c.id} sx={{ opacity: c.isArchived ? 0.5 : 1 }}>
-                   {/* cells */}
-                </TableRow>
               {competitions.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell>
@@ -372,7 +386,7 @@ const deleteMatch = async (id) => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <<Tooltip title="Refresh this competition">
+                    <Tooltip title="Refresh this competition only">
                         <IconButton onClick={() => handleRefreshCompetition(c)}>
                         <RefreshIcon color="primary" />
                         </IconButton>
@@ -394,24 +408,7 @@ const deleteMatch = async (id) => {
           </Table>
         </AccordionDetails>
       </Accordion>
-
-      // refresh just one competition and show how many matches were (re)written
-const handleRefreshCompetition = async (comp) => {
-  try {
-    const resp = await apiFetch(`/competitions/${comp.id}/refresh`, {
-      method: "POST",
-    });
-    const added = typeof resp?.added === "number" ? resp.added : 0;
-    alert(`✅ Refreshed "${comp.name}" — added ${added} matches`);
-
-    // re-pull matches so Admin → Matches shows the new rows immediately
-    await loadMatches();
-  } catch (err) {
-    console.error("❌ Failed to refresh competition", err);
-    alert(`❌ Refresh failed for "${comp.name}"`);
-  }
-};
-
+     
 {/* === Matches === */}
 <Accordion>
   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
