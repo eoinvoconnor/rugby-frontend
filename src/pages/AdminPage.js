@@ -372,11 +372,11 @@ const deleteMatch = async (id) => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title="Refresh">
-                      <IconButton onClick={() => handleRefreshCompetition(c)}>
-                      <RefreshIcon color="primary" />
-                      </IconButton>
-                      </Tooltip>
+                    <<Tooltip title="Refresh this competition">
+                        <IconButton onClick={() => handleRefreshCompetition(c)}>
+                        <RefreshIcon color="primary" />
+                        </IconButton>
+                        </Tooltip>
                     <Tooltip title="Save">
                       <IconButton onClick={() => saveCompetition(c)}>
                       <SaveIcon color="success" />
@@ -398,9 +398,12 @@ const deleteMatch = async (id) => {
       // refresh just one competition and show how many matches were (re)written
 const handleRefreshCompetition = async (comp) => {
   try {
-    const res = await apiFetch(`/competitions/${comp.id}/refresh`, { method: "POST" });
-    // res = { message, added, replaced? }
-    alert(`✅ Refreshed "${comp.name}" — added ${res.added ?? 0} matches`);
+    const resp = await apiFetch(`/competitions/${comp.id}/refresh`, {
+      method: "POST",
+    });
+    const added = typeof resp?.added === "number" ? resp.added : 0;
+    alert(`✅ Refreshed "${comp.name}" — added ${added} matches`);
+
     // re-pull matches so Admin → Matches shows the new rows immediately
     await loadMatches();
   } catch (err) {
