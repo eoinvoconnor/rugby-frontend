@@ -27,9 +27,11 @@ import SearchIcon from "@mui/icons-material/Search";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import EditIcon from "@mui/icons-material/Edit";
 import RefreshIcon from "@mui/icons-material/Refresh";
-
 import { apiFetch } from "../api/api";
 import { UserContext } from "../context/UserContext";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import DangerousIcon from "@mui/icons-material/Dangerous";
 
 
 function AdminPage() {
@@ -38,6 +40,7 @@ function AdminPage() {
   }, []);
   // ✅ Hooks must be inside the component
   const { user, logout } = useContext(UserContext);
+  const isSuperAdmin = user?.email === "eoinvoconnor@gmail.com";
 
   // ✅ State for competitions
   const [competitions, setCompetitions] = useState([]);
@@ -202,7 +205,49 @@ function AdminPage() {
           alert(`❌ Refresh failed for "${comp.name}"`);
         }
       };  // ✅ this closing brace and semicolon must be present
+
+      // superadmin handlers
+      const handleHideCompetition = async (comp) => {
+        try {
+          await apiFetch(`/competitions/${comp.id}/hide`, { method: "POST" });
+          setCompetitions((prev) =>
+            prev.map((c) => (c.id === comp.id ? { ...c, hidden: true } : c))
+          );
+        } catch (err) {
+          console.error("❌ Failed to hide competition", err);
+          alert(`❌ Hide failed for "${comp.name}"`);
+        }
+      };
       
+      const handleRestoreCompetition = async (comp) => {
+        try {
+          await apiFetch(`/competitions/${comp.id}/restore`, { method: "POST" });
+          setCompetitions((prev) =>
+            prev.map((c) => (c.id === comp.id ? { ...c, hidden: false } : c))
+          );
+        } catch (err) {
+          console.error("❌ Failed to restore competition", err);
+          alert(`❌ Restore failed for "${comp.name}"`);
+        }
+      };
+      
+      const handlePurgeCompetition = async (comp) => {
+        const ok = window.confirm(
+          `⚠️ HARD DELETE "${comp.name}"?\nThis will remove the competition, all its matches and predictions. This cannot be undone.`
+        );
+        if (!ok) return;
+      
+        try {
+          await apiFetch(`/superadmin/competitions/${comp.id}`, { method: "DELETE" });
+          // remove it from UI and refresh matches so they disappear immediately
+          setCompetitions((prev) => prev.filter((c) => c.id !== comp.id));
+          await loadMatches();
+          alert("✅ Competition purged.");
+        } catch (err) {
+          console.error("❌ Failed to purge competition", err);
+          alert(`❌ Purge failed for "${comp.name}"`);
+        }
+      };     
 
   const handleUpdateUser = async (id, field, value) => {
     const updated = users.map((u) =>
@@ -358,15 +403,21 @@ const deleteMatch = async (id) => {
             <TableBody>
               {competitions.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell>
-                    <TextField
-                      value={c.name}
-                      onChange={(e) =>
-                        handleUpdateCompetition(c.id, "name", e.target.value)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
+<TableCell>
+  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    <TextField
+      value={c.name}
+      onChange={(e) => handleUpdateCompetition(c.id, "name", e.target.value)}
+    />
+    {c.hidden && (
+      <Chip
+        size="small"
+        label="Hidden"
+        sx={{ bgcolor: "#999", color: "#fff" }}
+      />
+    )}
+  </Box>
+</TableCell>                  <TableCell>
                     <TextField
                       value={c.url}
                       onChange={(e) =>
@@ -386,23 +437,53 @@ const deleteMatch = async (id) => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title="Refresh this competition only">
-                        <IconButton onClick={() => handleRefreshCompetition(c)}>
-                        <RefreshIcon color="primary" />
-                        </IconButton>
-                        </Tooltip>
-                    <Tooltip title="Save">
-                      <IconButton onClick={() => saveCompetition(c)}>
-                      <SaveIcon color="success" />
-                      </IconButton>
-                      </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton onClick={() => deleteCompetition(c.id)}>
-                      <DeleteIcon color="error" />
-                      </IconButton>
-                      </Tooltip>
-                  </TableCell>
-                </TableRow>
+  {/* Refresh (existing) */}
+  <Tooltip title="Refresh">
+    <IconButton onClick={() => handleRefreshCompetition(c)}>
+      <RefreshIcon color="primary" />
+    </IconButton>
+  </Tooltip>
+
+  {/* Save (existing) */}
+  <Tooltip title="Save">
+    <IconButton onClick={() => saveCompetition(c)}>
+      <SaveIcon color="success" />
+    </IconButton>
+  </Tooltip>
+
+  {/* Delete (existing “normal” delete) */}
+  <Tooltip title="Delete">
+    <IconButton onClick={() => deleteCompetition(c.id)}>
+      <DeleteIcon color="error" />
+    </IconButton>
+  </Tooltip>
+
+  {/* SuperAdmin-only: Hide / Restore */}
+  {isSuperAdmin && (
+    c.hidden ? (
+      <Tooltip title="Restore (unhide)">
+        <IconButton onClick={() => handleRestoreCompetition(c)}>
+          <VisibilityIcon />
+        </IconButton>
+      </Tooltip>
+    ) : (
+      <Tooltip title="Hide competition (soft)">
+        <IconButton onClick={() => handleHideCompetition(c)}>
+          <VisibilityOffIcon />
+        </IconButton>
+      </Tooltip>
+    )
+  )}
+
+  {/* SuperAdmin-only: HARD PURGE */}
+  {isSuperAdmin && (
+    <Tooltip title="Hard purge (competition + matches + predictions)">
+      <IconButton onClick={() => handlePurgeCompetition(c)}>
+        <DangerousIcon sx={{ color: "#b71c1c" }} />
+      </IconButton>
+    </Tooltip>
+  )}
+</TableCell>                </TableRow>
               ))}
             </TableBody>
           </Table>
