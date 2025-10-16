@@ -42,8 +42,8 @@ function AppContent() {
   // ✅ Drawer navigation items (switch Login/Logout dynamically)
   const menuItems = [
     { text: "Matches", path: "/", title: "Matches" },
-    { text: "Leaderboard", path: "/leaderboard", title: "Leaderboard" },
-    ...(user
+    { text: "Leaderboard", path: "/leaderboard", title: "Leaderboard" }, 
+        ...(user
       ? [
           { text: "My predictions", path: "/mypredictions", title: "My predictions" },
           { text: "Profile", path: "/profile", title: "Profile" },
