@@ -13,6 +13,15 @@ import dayjs from "dayjs";
 import { apiFetch } from "../api/api";
 import { useUser } from "../context/UserContext";
 
+// Helper for consistent competition-colored pills
+const pillStyle = (hex) => ({
+  backgroundColor: hex || "#757575", // fallback grey
+  color: "#fff",
+  fontWeight: 600,
+  px: 1.5,
+  borderRadius: "20px",
+});
+
 function MyPredictionsPage() {
   const { user } = useUser();
   const [predictions, setPredictions] = useState([]);
@@ -110,39 +119,48 @@ function MyPredictionsPage() {
         </Button>
       </Stack>
 
-      {/* Predictions grouped by date */}
-      {sortedDates.map((dateKey) => (
-        <Paper key={dateKey} id={`date-${dateKey}`} sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            {dayjs(dateKey).format("dddd, D MMMM YYYY")}
-          </Typography>
+{/* Predictions grouped by date */}
+{sortedDates.map((dateKey) => (
+  <Paper key={dateKey} id={`date-${dateKey}`} sx={{ p: 2, mb: 3 }}>
+    <Typography variant="h6" gutterBottom>
+      {dayjs(dateKey).format("dddd, D MMMM YYYY")}
+    </Typography>
 
-          {grouped[dateKey].map((p) => (
-            <Box
-              key={`${p.userId}-${p.matchId}`} // ✅ better key for uniqueness
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                p: 1,
-                borderLeft: `8px solid ${p.color}`,
-                mb: 1,
-                bgcolor: "#fafafa",
-              }}
-            >
-              <Typography sx={{ flex: 1 }}>
-                {p.teamA} vs {p.teamB}
-              </Typography>
-              <Chip
-                label={`${p.predictedWinner} by ${p.margin}`}
-                sx={{
-                  bgcolor: p.color,
-                  color: "white",
-                }}
-              />
-            </Box>
-          ))}
-        </Paper>
-      ))}
+    {grouped[dateKey].map((p) => {
+      const winner = p.result?.winner || "TBD";
+      const margin = p.result?.margin || "";
+      const compColor = p.competitionColor || "#9e9e9e";
+
+      return (
+        <Box
+          key={`${p.userId}-${p.matchId}`}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            p: 1,
+            borderLeft: `8px solid ${compColor}`, // 🎨 competition color gutter
+            mb: 1,
+            bgcolor: "#fafafa",
+            borderRadius: 1,
+          }}
+        >
+          <Typography sx={{ flex: 1 }}>
+            {p.teamA} vs {p.teamB}
+          </Typography>
+          <Chip
+            size="small"
+            label={`${winner}${margin ? ` by ${margin}` : ""}`}
+            sx={{
+              backgroundColor: compColor,
+              color: "#fff",
+              fontWeight: 600,
+            }}
+          />
+        </Box>
+      );
+    })}
+  </Paper>
+))}
     </Container>
   );
 }
