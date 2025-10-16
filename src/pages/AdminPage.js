@@ -22,27 +22,25 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SaveIcon from "@mui/icons-material/Save";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import ReplayIcon from "@mui/icons-material/Replay";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
-import EditIcon from "@mui/icons-material/Edit";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import { apiFetch } from "../api/api";
-import { UserContext } from "../context/UserContext";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DangerousIcon from "@mui/icons-material/Dangerous";
 
+import { apiFetch } from "../api/api";
+import { UserContext } from "../context/UserContext";
 
 function AdminPage() {
   useEffect(() => {
     document.title = "Admin Panel";
   }, []);
-  // ✅ Hooks must be inside the component
-  const { user, logout } = useContext(UserContext);
+
+  const { user } = useContext(UserContext);
   const isSuperAdmin = user?.email === "eoinvoconnor@gmail.com";
 
-  // ✅ State for competitions
+  // Competitions state
   const [competitions, setCompetitions] = useState([]);
   const [newCompetition, setNewCompetition] = useState({
     name: "",
@@ -51,7 +49,7 @@ function AdminPage() {
   });
   const [showArchivedComps, setShowArchivedComps] = useState(false);
 
-  // ✅ State for matches
+  // Matches state
   const [matches, setMatches] = useState([]);
   const [newMatch, setNewMatch] = useState({
     competitionId: "",
@@ -60,11 +58,11 @@ function AdminPage() {
     kickoff: "",
   });
   const [matchSearch, setMatchSearch] = useState("");
-// 0 = All, 1 = Upcoming only, 2 = Completed only
+  // 0 = All, 1 = Upcoming only, 2 = Completed only
   const [matchViewMode, setMatchViewMode] = useState(0);
   const [sortConfig, setSortConfig] = useState({ key: "kickoff", dir: "asc" });
 
-  // ✅ State for users
+  // Users state
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({
     firstname: "",
@@ -74,7 +72,7 @@ function AdminPage() {
   });
   const [userSearch, setUserSearch] = useState("");
 
-  // ✅ Load competitions, matches, users
+  // Load data on mount
   useEffect(() => {
     loadCompetitions();
     loadMatches();
@@ -87,16 +85,6 @@ function AdminPage() {
       setCompetitions(data);
     } catch (err) {
       console.error("❌ Failed to load competitions", err);
-    }
-  };
-
-  const refreshCompetitions = async () => {
-    try {
-      const data = await apiFetch("/competitions");
-      setCompetitions(data);
-      console.log("✅ Competitions refreshed");
-    } catch (err) {
-      console.error("❌ Failed to refresh competitions", err);
     }
   };
 
@@ -118,6 +106,18 @@ function AdminPage() {
     }
   };
 
+  // Leaderboard recalculation (button replacement for tiny icon)
+  const recalcLeaderboard = async () => {
+    try {
+      await apiFetch("/admin/recalculate", { method: "POST" });
+      alert("✅ Leaderboard recalculated");
+    } catch (err) {
+      console.error("❌ Failed to recalculate leaderboard", err);
+      alert("❌ Failed to recalculate leaderboard");
+    }
+  };
+
+  // Competitions handlers
   const handleAddCompetition = async () => {
     if (!newCompetition.name || !newCompetition.url) return;
     try {
@@ -125,49 +125,17 @@ function AdminPage() {
         method: "POST",
         body: JSON.stringify(newCompetition),
       });
-      setCompetitions([...competitions, data]);
+      setCompetitions((prev) => [...prev, data]);
       setNewCompetition({ name: "", url: "", color: "#1976d2" });
     } catch (err) {
       console.error("❌ Failed to add competition", err);
     }
   };
 
-  const handleAddUser = async () => {
-    if (!newUser.firstname || !newUser.surname || !newUser.email) {
-      alert("⚠️ Please fill in all required fields (firstname, surname, email).");
-      return;
-    }
-  
-    try {
-      const data = await apiFetch("/users", {
-        method: "POST",
-        body: JSON.stringify(newUser),
-      });
-  
-      if (!data || data.error) {
-        alert(`❌ Failed to add user: ${data?.error || "Unknown error"}`);
-        return;
-      }
-  
-      alert(`✅ User "${data.firstname} ${data.surname}" added successfully!`);
-  
-      // Reset form
-      setNewUser({ firstname: "", surname: "", email: "", isAdmin: false });
-  
-      // Refresh user list from backend to ensure consistency
-      const refreshed = await apiFetch("/users");
-      setUsers(refreshed);
-    } catch (err) {
-      console.error("❌ Failed to add user", err);
-      alert("Error adding user — check console for details.");
-    }
-  };
-
-  const handleUpdateCompetition = async (id, field, value) => {
-    const updated = competitions.map((c) =>
-      c.id === id ? { ...c, [field]: value } : c
+  const handleUpdateCompetition = (id, field, value) => {
+    setCompetitions((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
     );
-    setCompetitions(updated);
   };
 
   const saveCompetition = async (competition) => {
@@ -184,76 +152,91 @@ function AdminPage() {
   const deleteCompetition = async (id) => {
     try {
       await apiFetch(`/competitions/${id}`, { method: "DELETE" });
-      setCompetitions(competitions.filter((c) => c.id !== id));
+      setCompetitions((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       console.error("❌ Failed to delete competition", err);
     }
   };
 
-      // refresh just one competition and show how many matches were (re)written
-      const handleRefreshCompetition = async (comp) => {
-        try {
-          const resp = await apiFetch(`/competitions/${comp.id}/refresh`, {
-            method: "POST",
-          });
-          const added = typeof resp?.added === "number" ? resp.added : 0;
-          alert(`✅ Refreshed "${comp.name}" — added ${added} matches`);
-          await loadMatches();
-          await loadCompetitions();
-        } catch (err) {
-          console.error("❌ Failed to refresh competition", err);
-          alert(`❌ Refresh failed for "${comp.name}"`);
-        }
-      };  // ✅ this closing brace and semicolon must be present
+  const handleRefreshCompetition = async (comp) => {
+    try {
+      const resp = await apiFetch(`/competitions/${comp.id}/refresh`, {
+        method: "POST",
+      });
+      const added = typeof resp?.added === "number" ? resp.added : 0;
+      alert(`✅ Refreshed "${comp.name}" — added ${added} matches`);
+      await loadMatches();
+      await loadCompetitions();
+    } catch (err) {
+      console.error("❌ Failed to refresh competition", err);
+      alert(`❌ Refresh failed for "${comp.name}"`);
+    }
+  };
 
-      // superadmin handlers
-      const handleHideCompetition = async (comp) => {
-        try {
-          await apiFetch(`/competitions/${comp.id}/hide`, { method: "POST" });
-          setCompetitions((prev) =>
-            prev.map((c) => (c.id === comp.id ? { ...c, hidden: true } : c))
-          );
-        } catch (err) {
-          console.error("❌ Failed to hide competition", err);
-          alert(`❌ Hide failed for "${comp.name}"`);
-        }
-      };
-      
-      const handleRestoreCompetition = async (comp) => {
-        try {
-          await apiFetch(`/competitions/${comp.id}/restore`, { method: "POST" });
-          setCompetitions((prev) =>
-            prev.map((c) => (c.id === comp.id ? { ...c, hidden: false } : c))
-          );
-        } catch (err) {
-          console.error("❌ Failed to restore competition", err);
-          alert(`❌ Restore failed for "${comp.name}"`);
-        }
-      };
-      
-      const handlePurgeCompetition = async (comp) => {
-        const ok = window.confirm(
-          `⚠️ HARD DELETE "${comp.name}"?\nThis will remove the competition, all its matches and predictions. This cannot be undone.`
-        );
-        if (!ok) return;
-      
-        try {
-          await apiFetch(`/superadmin/competitions/${comp.id}`, { method: "DELETE" });
-          // remove it from UI and refresh matches so they disappear immediately
-          setCompetitions((prev) => prev.filter((c) => c.id !== comp.id));
-          await loadMatches();
-          alert("✅ Competition purged.");
-        } catch (err) {
-          console.error("❌ Failed to purge competition", err);
-          alert(`❌ Purge failed for "${comp.name}"`);
-        }
-      };     
+  // SuperAdmin only
+  const handleHideCompetition = async (comp) => {
+    try {
+      await apiFetch(`/competitions/${comp.id}/hide`, { method: "POST" });
+      setCompetitions((prev) =>
+        prev.map((c) => (c.id === comp.id ? { ...c, hidden: true } : c))
+      );
+    } catch (err) {
+      console.error("❌ Failed to hide competition", err);
+    }
+  };
 
-  const handleUpdateUser = async (id, field, value) => {
-    const updated = users.map((u) =>
-      u.id === id ? { ...u, [field]: value } : u
+  const handleRestoreCompetition = async (comp) => {
+    try {
+      await apiFetch(`/competitions/${comp.id}/restore`, { method: "POST" });
+      setCompetitions((prev) =>
+        prev.map((c) => (c.id === comp.id ? { ...c, hidden: false } : c))
+      );
+    } catch (err) {
+      console.error("❌ Failed to restore competition", err);
+    }
+  };
+
+  const handlePurgeCompetition = async (comp) => {
+    const ok = window.confirm(
+      `⚠️ HARD DELETE "${comp.name}"?\nThis removes the competition, all matches and predictions.`
     );
-    setUsers(updated);
+    if (!ok) return;
+    try {
+      await apiFetch(`/superadmin/competitions/${comp.id}`, { method: "DELETE" });
+      setCompetitions((prev) => prev.filter((c) => c.id !== comp.id));
+      await loadMatches();
+      alert("✅ Competition purged.");
+    } catch (err) {
+      console.error("❌ Failed to purge competition", err);
+    }
+  };
+
+  // Users handlers
+  const handleAddUser = async () => {
+    if (!newUser.firstname || !newUser.surname || !newUser.email) {
+      alert("⚠️ Please fill in firstname, surname and email.");
+      return;
+    }
+    try {
+      const data = await apiFetch("/users", {
+        method: "POST",
+        body: JSON.stringify(newUser),
+      });
+      if (!data || data.error) {
+        alert(`❌ Failed to add user: ${data?.error || "Unknown error"}`);
+        return;
+      }
+      setNewUser({ firstname: "", surname: "", email: "", isAdmin: false });
+      const refreshed = await apiFetch("/users");
+      setUsers(refreshed);
+      alert(`✅ User "${data.firstname} ${data.surname}" added`);
+    } catch (err) {
+      console.error("❌ Failed to add user", err);
+    }
+  };
+
+  const handleUpdateUser = (id, field, value) => {
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, [field]: value } : u)));
   };
 
   const saveUser = async (user) => {
@@ -270,90 +253,76 @@ function AdminPage() {
   const deleteUser = async (id) => {
     try {
       await apiFetch(`/users/${id}`, { method: "DELETE" });
-      setUsers(users.filter((u) => u.id !== id));
+      setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (err) {
       console.error("❌ Failed to delete user", err);
     }
   };
 
+  // Force logout (moved into Users accordion header)
   const forceLogout = async () => {
     try {
       await apiFetch("/admin/force-logout", { method: "POST" });
-      alert("All users logged out");
+      alert("✅ All users logged out");
     } catch (err) {
       console.error("❌ Failed to force logout", err);
     }
   };
 
-// --- MATCH MANAGEMENT ---
+  // Match editing
+  const handleAddMatch = async () => {
+    if (!newMatch.teamA || !newMatch.teamB || !newMatch.kickoff || !newMatch.competitionId) {
+      alert("Please complete all fields before adding a match");
+      return;
+    }
+    try {
+      const data = await apiFetch("/matches", {
+        method: "POST",
+        body: JSON.stringify(newMatch),
+      });
+      setMatches((prev) => [...prev, data]);
+      setNewMatch({ teamA: "", teamB: "", kickoff: "", competitionId: "" });
+    } catch (err) {
+      console.error("❌ Failed to add match", err);
+    }
+  };
 
-const handleAddMatch = async () => {
-  if (!newMatch.teamA || !newMatch.teamB || !newMatch.kickoff || !newMatch.competitionId) {
-    alert("Please complete all fields before adding a match");
-    return;
-  }
+  const handleUpdateMatch = (id, field, value) => {
+    setMatches((prev) => prev.map((m) => (m.id === id ? { ...m, [field]: value } : m)));
+  };
 
-  try {
-    const data = await apiFetch("/matches", {
-      method: "POST",
-      body: JSON.stringify(newMatch),
-    });
-    setMatches([...matches, data]);
-    setNewMatch({ teamA: "", teamB: "", kickoff: "", competitionId: "" });
-  } catch (err) {
-    console.error("❌ Failed to add match", err);
-  }
-};
+  const saveMatch = async (match) => {
+    try {
+      await apiFetch(`/matches/${match.id}`, {
+        method: "PUT",
+        body: JSON.stringify(match),
+      });
+    } catch (err) {
+      console.error("❌ Failed to save match", err);
+    }
+  };
 
-const handleUpdateMatch = (id, field, value) => {
-  setMatches((prev) =>
-    prev.map((m) => (m.id === id ? { ...m, [field]: value } : m))
-  );
-};
-
-const saveMatch = async (match) => {
-  try {
-    await apiFetch(`/matches/${match.id}`, {
-      method: "PUT",
-      body: JSON.stringify(match),
-    });
-  } catch (err) {
-    console.error("❌ Failed to save match", err);
-  }
-};
-
-const deleteMatch = async (id) => {
-  try {
-    await apiFetch(`/matches/${id}`, { method: "DELETE" });
-    setMatches(matches.filter((m) => m.id !== id));
-  } catch (err) {
-    console.error("❌ Failed to delete match", err);
-  }
-};
+  const deleteMatch = async (id) => {
+    try {
+      await apiFetch(`/matches/${id}`, { method: "DELETE" });
+      setMatches((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      console.error("❌ Failed to delete match", err);
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Admin
-      </Typography>
-
-      {/* Toolbar */}
+      {/* Toolbar — only the new button remains */}
       <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-        <Tooltip title="Recalculate Leaderboard">
-          <IconButton color="primary">
-            <ReplayIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Edit Mode">
-          <IconButton color="secondary">
-            <EditIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Force Logout All Users">
-          <IconButton color="error" onClick={forceLogout}>
-            <ExitToAppIcon />
-          </IconButton>
-        </Tooltip>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={recalcLeaderboard}
+          startIcon={<RefreshIcon />}
+        >
+          Recalculate leaderboard
+        </Button>
       </Box>
 
       {/* === Competitions === */}
@@ -385,8 +354,8 @@ const deleteMatch = async (id) => {
 
           <Button
             variant="outlined"
-            onClick={() => setShowArchivedComps(s => !s)}
-            sx={{ ml: 1 }}
+            onClick={() => setShowArchivedComps((s) => !s)}
+            sx={{ ml: 1, mb: 2 }}
           >
             {showArchivedComps ? "Hide archived" : "Show archived"}
           </Button>
@@ -402,22 +371,21 @@ const deleteMatch = async (id) => {
             </TableHead>
             <TableBody>
               {competitions.map((c) => (
-                <TableRow key={c.id}>
-<TableCell>
-  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-    <TextField
-      value={c.name}
-      onChange={(e) => handleUpdateCompetition(c.id, "name", e.target.value)}
-    />
-    {c.hidden && (
-      <Chip
-        size="small"
-        label="Hidden"
-        sx={{ bgcolor: "#999", color: "#fff" }}
-      />
-    )}
-  </Box>
-</TableCell>                  <TableCell>
+                <TableRow key={c.id} sx={{ display: !showArchivedComps && c.hidden ? "none" : "table-row" }}>
+                  <TableCell>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <TextField
+                        value={c.name}
+                        onChange={(e) =>
+                          handleUpdateCompetition(c.id, "name", e.target.value)
+                        }
+                      />
+                      {c.hidden && (
+                        <Chip size="small" label="Hidden" sx={{ bgcolor: "#999", color: "#fff" }} />
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
                     <TextField
                       value={c.url}
                       onChange={(e) =>
@@ -437,240 +405,281 @@ const deleteMatch = async (id) => {
                     />
                   </TableCell>
                   <TableCell align="right">
-  {/* Refresh (existing) */}
-  <Tooltip title="Refresh">
-    <IconButton onClick={() => handleRefreshCompetition(c)}>
-      <RefreshIcon color="primary" />
-    </IconButton>
-  </Tooltip>
+                    <Tooltip title="Refresh">
+                      <IconButton onClick={() => handleRefreshCompetition(c)}>
+                        <RefreshIcon color="primary" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Save">
+                      <IconButton onClick={() => saveCompetition(c)}>
+                        <SaveIcon color="success" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton onClick={() => deleteCompetition(c.id)}>
+                        <DeleteIcon color="error" />
+                      </IconButton>
+                    </Tooltip>
 
-  {/* Save (existing) */}
-  <Tooltip title="Save">
-    <IconButton onClick={() => saveCompetition(c)}>
-      <SaveIcon color="success" />
-    </IconButton>
-  </Tooltip>
+                    {isSuperAdmin &&
+                      (c.hidden ? (
+                        <Tooltip title="Restore (unhide)">
+                          <IconButton onClick={() => handleRestoreCompetition(c)}>
+                            <VisibilityIcon />
+                          </IconButton>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="Hide competition (soft)">
+                          <IconButton onClick={() => handleHideCompetition(c)}>
+                            <VisibilityOffIcon />
+                          </IconButton>
+                        </Tooltip>
+                      ))}
 
-  {/* Delete (existing “normal” delete) */}
-  <Tooltip title="Delete">
-    <IconButton onClick={() => deleteCompetition(c.id)}>
-      <DeleteIcon color="error" />
-    </IconButton>
-  </Tooltip>
-
-  {/* SuperAdmin-only: Hide / Restore */}
-  {isSuperAdmin && (
-    c.hidden ? (
-      <Tooltip title="Restore (unhide)">
-        <IconButton onClick={() => handleRestoreCompetition(c)}>
-          <VisibilityIcon />
-        </IconButton>
-      </Tooltip>
-    ) : (
-      <Tooltip title="Hide competition (soft)">
-        <IconButton onClick={() => handleHideCompetition(c)}>
-          <VisibilityOffIcon />
-        </IconButton>
-      </Tooltip>
-    )
-  )}
-
-  {/* SuperAdmin-only: HARD PURGE */}
-  {isSuperAdmin && (
-    <Tooltip title="Hard purge (competition + matches + predictions)">
-      <IconButton onClick={() => handlePurgeCompetition(c)}>
-        <DangerousIcon sx={{ color: "#b71c1c" }} />
-      </IconButton>
-    </Tooltip>
-  )}
-</TableCell>                </TableRow>
+                    {isSuperAdmin && (
+                      <Tooltip title="Hard purge (competition + matches + predictions)">
+                        <IconButton onClick={() => handlePurgeCompetition(c)}>
+                          <DangerousIcon sx={{ color: "#b71c1c" }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                </TableRow>
               ))}
             </TableBody>
           </Table>
         </AccordionDetails>
       </Accordion>
-     
-{/* === Matches === */}
-<Accordion>
-  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-    <Typography>Matches</Typography>
-  </AccordionSummary>
-  <AccordionDetails>
-    <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-      <TextField
-        label="Search matches..."
-        value={matchSearch}
-        onChange={(e) => setMatchSearch(e.target.value)}
-        InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1 }} /> }}
-      />
-<Button
-  variant="outlined"
-  color={matchViewMode === 1 ? "success" : matchViewMode === 2 ? "secondary" : "primary"}
-  onClick={() => setMatchViewMode((matchViewMode + 1) % 3)}
->
-  {matchViewMode === 0 && "Showing: All Matches"}
-  {matchViewMode === 1 && "Showing: Upcoming Only"}
-  {matchViewMode === 2 && "Showing: Completed Only"}
-</Button>      <Button
-        variant="contained"
-        color="primary"
-        onClick={handleAddMatch}
-        startIcon={<AddIcon />}
-      >
-        Add Match
-      </Button>
-    </Box>
 
-    <Table size="small">
-    <TableHead>
-  <TableRow>
-    <TableCell
-      onClick={() => setSortConfig({ key: "kickoff", dir: sortConfig.dir === "asc" ? "desc" : "asc" })}
-      sx={{ cursor: "pointer" }}
-    >
-      Date {sortConfig.key === "kickoff" ? (sortConfig.dir === "asc" ? "↑" : "↓") : ""}
-    </TableCell>
-    <TableCell
-      onClick={() => setSortConfig({ key: "competitionName", dir: sortConfig.dir === "asc" ? "desc" : "asc" })}
-      sx={{ cursor: "pointer" }}
-    >
-      Competition {sortConfig.key === "competitionName" ? (sortConfig.dir === "asc" ? "↑" : "↓") : ""}
-    </TableCell>
-    <TableCell
-      onClick={() => setSortConfig({ key: "teamA", dir: sortConfig.dir === "asc" ? "desc" : "asc" })}
-      sx={{ cursor: "pointer" }}
-    >
-      Team A {sortConfig.key === "teamA" ? (sortConfig.dir === "asc" ? "↑" : "↓") : ""}
-    </TableCell>
-    <TableCell
-      onClick={() => setSortConfig({ key: "teamB", dir: sortConfig.dir === "asc" ? "desc" : "asc" })}
-      sx={{ cursor: "pointer" }}
-    >
-      Team B {sortConfig.key === "teamB" ? (sortConfig.dir === "asc" ? "↑" : "↓") : ""}
-    </TableCell>
-    <TableCell>Winner</TableCell>
-    <TableCell>Margin</TableCell>
-    <TableCell align="right">Actions</TableCell>
-  </TableRow>
-</TableHead>
-      <TableBody>
-      {matches
-  .filter((m) => {
-    const q = matchSearch.toLowerCase();
+      {/* === Matches === */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Matches</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <TextField
+              label="Search matches..."
+              value={matchSearch}
+              onChange={(e) => setMatchSearch(e.target.value)}
+              InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1 }} /> }}
+            />
+            <Button
+              variant="outlined"
+              color={
+                matchViewMode === 1
+                  ? "success"
+                  : matchViewMode === 2
+                  ? "secondary"
+                  : "primary"
+              }
+              onClick={() => setMatchViewMode((matchViewMode + 1) % 3)}
+            >
+              {matchViewMode === 0 && "Showing: All Matches"}
+              {matchViewMode === 1 && "Showing: Upcoming Only"}
+              {matchViewMode === 2 && "Showing: Completed Only"}
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleAddMatch}
+              startIcon={<AddIcon />}
+            >
+              Add Match
+            </Button>
+          </Box>
 
-    // 🟢 Filter by search query
-    const matchesSearch =
-      m.teamA.toLowerCase().includes(q) ||
-      m.teamB.toLowerCase().includes(q) ||
-      (m.competitionName || "").toLowerCase().includes(q);
-
-    // 🟢 Filter by completion state
-// 🧠 Consider a match completed if:
-// 1️⃣ It has a winner or a margin, OR
-// 2️⃣ The kickoff is in the past and there's no result data
-const isCompleted =
-  (m.result &&
-    ((typeof m.result.winner === "string" && m.result.winner.trim() !== "") ||
-      (m.result.margin !== null && m.result.margin !== undefined))) ||
-  new Date(m.kickoff) < new Date();
-
-    // ✅ Only show completed if showCompleted is true
-    const now = new Date();
-    const isPast = new Date(m.kickoff) < now;
-    
-    if (matchViewMode === 1) return matchesSearch && !isPast; // Upcoming only
-    if (matchViewMode === 2) return matchesSearch && isPast;  // Completed only
-    return matchesSearch; // All matches
-
-  })          .sort((a, b) => {
-            const dir = sortConfig.dir === "asc" ? 1 : -1;
-            if (sortConfig.key === "kickoff") {
-              return (new Date(a.kickoff) - new Date(b.kickoff)) * dir;
-            }
-            if (a[sortConfig.key] < b[sortConfig.key]) return -1 * dir;
-            if (a[sortConfig.key] > b[sortConfig.key]) return 1 * dir;
-            return 0;
-          })
-                    .map((m) => (
-            <TableRow key={m.id}>
-              <TableCell>
-                <TextField
-                  type="datetime-local"
-                  value={new Date(m.kickoff).toISOString().slice(0, 16)}
-                  onChange={(e) =>
-                    handleUpdateMatch(m.id, "kickoff", e.target.value)
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <Chip
-                  label={m.competitionName}
-                  sx={{
-                    backgroundColor: m.competitionColor || "#999",
-                    color: "#fff",
-                  }}
-                />
-              </TableCell>
-              <TableCell>
-                <TextField
-                  value={m.teamA}
-                  onChange={(e) =>
-                    handleUpdateMatch(m.id, "teamA", e.target.value)
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <TextField
-                  value={m.teamB}
-                  onChange={(e) =>
-                    handleUpdateMatch(m.id, "teamB", e.target.value)
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <TextField
-                  value={m.result?.winner || ""}
-                  onChange={(e) =>
-                    handleUpdateMatch(m.id, "result", {
-                      ...m.result,
-                      winner: e.target.value,
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell
+                  onClick={() =>
+                    setSortConfig({
+                      key: "kickoff",
+                      dir: sortConfig.dir === "asc" ? "desc" : "asc",
                     })
                   }
-                />
-              </TableCell>
-              <TableCell>
-                <TextField
-                  value={m.result?.margin || ""}
-                  onChange={(e) =>
-                    handleUpdateMatch(m.id, "result", {
-                      ...m.result,
-                      margin: e.target.value,
+                  sx={{ cursor: "pointer" }}
+                >
+                  Date{" "}
+                  {sortConfig.key === "kickoff"
+                    ? sortConfig.dir === "asc"
+                      ? "↑"
+                      : "↓"
+                    : ""}
+                </TableCell>
+                <TableCell
+                  onClick={() =>
+                    setSortConfig({
+                      key: "competitionName",
+                      dir: sortConfig.dir === "asc" ? "desc" : "asc",
                     })
                   }
-                />
-              </TableCell>
-              <TableCell align="right">
-                <Tooltip title="Save">
-                  <IconButton onClick={() => saveMatch(m)}>
-                    <SaveIcon color="success" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton onClick={() => deleteMatch(m.id)}>
-                    <DeleteIcon color="error" />
-                  </IconButton>
-                </Tooltip>
-              </TableCell>
-            </TableRow>
-          ))}
-      </TableBody>
-    </Table>
-  </AccordionDetails>
-</Accordion>
+                  sx={{ cursor: "pointer" }}
+                >
+                  Competition{" "}
+                  {sortConfig.key === "competitionName"
+                    ? sortConfig.dir === "asc"
+                      ? "↑"
+                      : "↓"
+                    : ""}
+                </TableCell>
+                <TableCell
+                  onClick={() =>
+                    setSortConfig({
+                      key: "teamA",
+                      dir: sortConfig.dir === "asc" ? "desc" : "asc",
+                    })
+                  }
+                  sx={{ cursor: "pointer" }}
+                >
+                  Team A{" "}
+                  {sortConfig.key === "teamA"
+                    ? sortConfig.dir === "asc"
+                      ? "↑"
+                      : "↓"
+                    : ""}
+                </TableCell>
+                <TableCell
+                  onClick={() =>
+                    setSortConfig({
+                      key: "teamB",
+                      dir: sortConfig.dir === "asc" ? "desc" : "asc",
+                    })
+                  }
+                  sx={{ cursor: "pointer" }}
+                >
+                  Team B{" "}
+                  {sortConfig.key === "teamB"
+                    ? sortConfig.dir === "asc"
+                      ? "↑"
+                      : "↓"
+                    : ""}
+                </TableCell>
+                <TableCell>Winner</TableCell>
+                <TableCell>Margin</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {matches
+                .filter((m) => {
+                  const q = matchSearch.toLowerCase();
+                  const matchesSearch =
+                    m.teamA.toLowerCase().includes(q) ||
+                    m.teamB.toLowerCase().includes(q) ||
+                    (m.competitionName || "").toLowerCase().includes(q);
+
+                  const now = new Date();
+                  const isPast = new Date(m.kickoff) < now;
+
+                  if (matchViewMode === 1) return matchesSearch && !isPast; // upcoming
+                  if (matchViewMode === 2) return matchesSearch && isPast; // completed
+                  return matchesSearch; // all
+                })
+                .sort((a, b) => {
+                  const dir = sortConfig.dir === "asc" ? 1 : -1;
+                  if (sortConfig.key === "kickoff") {
+                    return (new Date(a.kickoff) - new Date(b.kickoff)) * dir;
+                  }
+                  if (a[sortConfig.key] < b[sortConfig.key]) return -1 * dir;
+                  if (a[sortConfig.key] > b[sortConfig.key]) return 1 * dir;
+                  return 0;
+                })
+                .map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell>
+                      <TextField
+                        type="datetime-local"
+                        value={new Date(m.kickoff).toISOString().slice(0, 16)}
+                        onChange={(e) =>
+                          handleUpdateMatch(m.id, "kickoff", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={m.competitionName}
+                        sx={{
+                          backgroundColor: m.competitionColor || "#999",
+                          color: "#fff",
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={m.teamA}
+                        onChange={(e) =>
+                          handleUpdateMatch(m.id, "teamA", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={m.teamB}
+                        onChange={(e) =>
+                          handleUpdateMatch(m.id, "teamB", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={m.result?.winner || ""}
+                        onChange={(e) =>
+                          handleUpdateMatch(m.id, "result", {
+                            ...m.result,
+                            winner: e.target.value,
+                          })
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={m.result?.margin || ""}
+                        onChange={(e) =>
+                          handleUpdateMatch(m.id, "result", {
+                            ...m.result,
+                            margin: e.target.value,
+                          })
+                        }
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Save">
+                        <IconButton onClick={() => saveMatch(m)}>
+                          <SaveIcon color="success" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton onClick={() => deleteMatch(m.id)}>
+                          <DeleteIcon color="error" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </AccordionDetails>
+      </Accordion>
+
       {/* === Users === */}
       <Accordion>
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Typography>Users</Typography>
+          {/* Right-aligned force logout button */}
+          <Box sx={{ ml: "auto" }}>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={forceLogout}
+              startIcon={<ExitToAppIcon />}
+              size="small"
+            >
+              Force logout all users
+            </Button>
+          </Box>
         </AccordionSummary>
         <AccordionDetails>
           <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -732,12 +741,8 @@ const isCompleted =
               {users
                 .filter(
                   (u) =>
-                    u.firstname
-                      .toLowerCase()
-                      .includes(userSearch.toLowerCase()) ||
-                    u.surname
-                      .toLowerCase()
-                      .includes(userSearch.toLowerCase()) ||
+                    u.firstname.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.surname.toLowerCase().includes(userSearch.toLowerCase()) ||
                     u.email.toLowerCase().includes(userSearch.toLowerCase())
                 )
                 .map((u) => (
@@ -778,12 +783,12 @@ const isCompleted =
                     <TableCell align="right">
                       <Tooltip title="Save">
                         <IconButton onClick={() => saveUser(u)}>
-                          <SaveIcon />
+                          <SaveIcon color="success" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
                         <IconButton onClick={() => deleteUser(u.id)}>
-                          <DeleteIcon />
+                          <DeleteIcon color="error" />
                         </IconButton>
                       </Tooltip>
                     </TableCell>
