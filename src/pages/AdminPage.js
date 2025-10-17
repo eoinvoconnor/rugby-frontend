@@ -33,6 +33,7 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 
 import { apiFetch } from "../api/api";
 import { UserContext } from "../context/UserContext";
+import { useMemo } from "react"; // ensure this is in your imports
 
 function AdminPage() {
   useEffect(() => {
@@ -64,11 +65,6 @@ function AdminPage() {
   const [matchViewMode, setMatchViewMode] = useState(0);
   const [sortConfig, setSortConfig] = useState({ key: "kickoff", dir: "asc" });
 
-// ✅ State for predictions (admin view)
-const [predictions, setPredictions] = useState([]);
-const [predSearch, setPredSearch] = useState("");
-const [predSort, setPredSort] = useState({ key: "kickoff", dir: "asc" }); // kickoff|competition|winner|user
-
   // Users state
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({
@@ -79,12 +75,18 @@ const [predSort, setPredSort] = useState({ key: "kickoff", dir: "asc" }); // kic
   });
   const [userSearch, setUserSearch] = useState("");
 
+  // ✅ State for predictions (admin view)
+  const [predictions, setPredictions] = useState([]);
+  const [predSearch, setPredSearch] = useState("");
+  const [predSort, setPredSort] = useState({ key: "kickoff", dir: "asc" }); // kickoff|competition|winner|user
+
+
   // Load data on mount
   useEffect(() => {
     loadCompetitions();
     loadMatches();
-    loadPredictions();
     loadUsers();
+    loadPredictions();
   }, []);
 
   const loadCompetitions = async () => {
@@ -184,12 +186,15 @@ const compById = new Map(competitions.map(c => [c.id, c]));
 const matchById = new Map(matches.map(m => [m.id, m]));
 const userById  = new Map(users.map(u => [u.id, u]));
 
-// Compute lock state: if match kickoff is in the past, it's locked
-const isPredictionLocked = (pred) => {
-  const m = matchById.get(pred.matchId);
-  if (!m || !m.kickoff) return false;
-  return new Date(m.kickoff) <= new Date();
+const isPredictionLocked = (p) => {
+  const m = matchMap.get(p.matchId);
+  if (!m) return false;
+  const hasStarted = new Date(m.kickoff) <= new Date();
+  // If backend also stores p.locked, respect either condition
+  return hasStarted || p.locked === true;
 };
+
+
 
   // SuperAdmin only
   const handleHideCompetition = async (comp) => {
@@ -343,17 +348,22 @@ const handleUpdateResults = async () => {
 
 // my prediction CRUD handlers
 const handleUpdatePrediction = (id, field, value) => {
-  setPredictions(prev => prev.map(p => (p.id === id ? { ...p, [field]: value } : p)));
+  setPredictions(prev =>
+    prev.map(p => (p.id === id ? { ...p, [field]: value } : p))
+  );
 };
 
-const savePrediction = async (pred) => {
+const savePrediction = async (p) => {
   try {
-    await apiFetch(`/admin/predictions/${pred.id}`, {
+    await apiFetch(`/admin/predictions/${p.id}`, {
       method: "PUT",
-      body: JSON.stringify(pred),
+      body: JSON.stringify(p),
     });
+    // Optionally refresh from server:
+    // await loadPredictions();
   } catch (err) {
     console.error("❌ Failed to save prediction", err);
+    alert("❌ Save failed");
   }
 };
 
@@ -363,6 +373,7 @@ const deletePrediction = async (id) => {
     setPredictions(prev => prev.filter(p => p.id !== id));
   } catch (err) {
     console.error("❌ Failed to delete prediction", err);
+    alert("❌ Delete failed");
   }
 };
 
@@ -389,50 +400,62 @@ const recalcLeaderboard = async () => {
   }
 };
 // my predictions sort & filter
-const filteredSortedPreds = predictions
-  .filter((p) => {
-    const m = matchById.get(p.matchId);
-    const u = userById.get(p.userId);
-    const comp = m ? compById.get(m.competitionId) : null;
+const filteredSortedPreds = useMemo(() => {
+  const q = predSearch.trim().toLowerCase();
 
-    const haystack = [
-      p.predictedWinner || "",
-      String(p.margin ?? ""),
-      u?.email || "",
-      comp?.name || "",
-      m?.teamA || "",
-      m?.teamB || "",
-    ].join(" ").toLowerCase();
-
-    return haystack.includes(predSearch.toLowerCase());
-  })
-  .sort((a, b) => {
-    const dir = predSort.dir === "asc" ? 1 : -1;
-
-    const ma = matchById.get(a.matchId);
-    const mb = matchById.get(b.matchId);
-    const ua = userById.get(a.userId);
-    const ub = userById.get(b.userId);
-    const ca = ma ? compById.get(ma.competitionId) : null;
-    const cb = mb ? compById.get(mb.competitionId) : null;
-
-    const byKey = (key) => {
-      switch (key) {
-        case "kickoff":
-          return ((new Date(ma?.kickoff || 0)) - (new Date(mb?.kickoff || 0))) * dir;
-        case "competition":
-          return (ca?.name || "").localeCompare(cb?.name || "") * dir;
-        case "winner":
-          return (a.predictedWinner || "").localeCompare(b.predictedWinner || "") * dir;
-        case "user":
-          return (ua?.email || "").localeCompare(ub?.email || "") * dir;
-        default:
-          return 0;
-      }
-    };
-
-    return byKey(predSort.key);
+  const base = predictions.map(p => {
+    const m = matchMap.get(p.matchId);
+    const u = userMap.get(p.userId);
+    const c = m ? compMap.get(m.competitionId) : null;
+    return { p, m, u, c };
   });
+
+  const filtered = q
+    ? base.filter(({ p, m, u, c }) => {
+        const hay = [
+          p.predictedWinner || p.winner || "",
+          String(p.margin ?? ""),
+          m?.teamA || "",
+          m?.teamB || "",
+          m?.competitionName || "",
+          c?.name || "",
+          u?.email || "",
+          `${u?.firstname || ""} ${u?.surname || ""}`,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      })
+    : base;
+
+  const dir = predSort.dir === "asc" ? 1 : -1;
+
+  const sorted = [...filtered].sort((A, B) => {
+    const { p: pA, m: mA, u: uA, c: cA } = A;
+    const { p: pB, m: mB, u: uB, c: cB } = B;
+    switch (predSort.key) {
+      case "kickoff":
+        return ((new Date(mA?.kickoff || 0)) - (new Date(mB?.kickoff || 0))) * dir;
+      case "competition":
+        return ((cA?.name || mA?.competitionName || "").localeCompare(cB?.name || mB?.competitionName || "")) * dir;
+      case "user":
+        return ((uA?.email || "").localeCompare(uB?.email || "")) * dir;
+      case "winner":
+        return ((pA.predictedWinner || pA.winner || "").localeCompare(pB.predictedWinner || pB.winner || "")) * dir;
+      case "margin":
+        return (((pA.margin ?? 0) - (pB.margin ?? 0)) * dir);
+      case "locked": {
+        const aLocked = isPredictionLocked(pA) ? 1 : 0;
+        const bLocked = isPredictionLocked(pB) ? 1 : 0;
+        return (aLocked - bLocked) * dir;
+      }
+      default:
+        return 0;
+    }
+  });
+
+  return sorted;
+}, [predictions, predSearch, predSort, matchMap, userMap, compMap]);
 
 
 // ✅ The return must open a single JSX root
