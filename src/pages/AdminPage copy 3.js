@@ -28,8 +28,6 @@ import ExitToAppIcon from "@mui/icons-material/ExitToApp";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DangerousIcon from "@mui/icons-material/Dangerous";
-import LockIcon from "@mui/icons-material/Lock";
-import LockOpenIcon from "@mui/icons-material/LockOpen";
 
 import { apiFetch } from "../api/api";
 import { UserContext } from "../context/UserContext";
@@ -64,11 +62,6 @@ function AdminPage() {
   const [matchViewMode, setMatchViewMode] = useState(0);
   const [sortConfig, setSortConfig] = useState({ key: "kickoff", dir: "asc" });
 
-// ✅ State for predictions (admin view)
-const [predictions, setPredictions] = useState([]);
-const [predSearch, setPredSearch] = useState("");
-const [predSort, setPredSort] = useState({ key: "kickoff", dir: "asc" }); // kickoff|competition|winner|user
-
   // Users state
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({
@@ -83,7 +76,6 @@ const [predSort, setPredSort] = useState({ key: "kickoff", dir: "asc" }); // kic
   useEffect(() => {
     loadCompetitions();
     loadMatches();
-    loadPredictions();
     loadUsers();
   }, []);
 
@@ -105,21 +97,23 @@ const [predSort, setPredSort] = useState({ key: "kickoff", dir: "asc" }); // kic
     }
   };
 
-  const loadPredictions = async () => {
-    try {
-      const data = await apiFetch("/admin/predictions"); // returns all users’ predictions
-      setPredictions(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("❌ Failed to load predictions", err);
-    }
-  };
-
   const loadUsers = async () => {
     try {
       const data = await apiFetch("/users");
       setUsers(data);
     } catch (err) {
       console.error("❌ Failed to load users", err);
+    }
+  };
+
+  // Leaderboard recalculation (button replacement for tiny icon)
+  const recalcLeaderboard = async () => {
+    try {
+      await apiFetch("/admin/recalculate", { method: "POST" });
+      alert("✅ Leaderboard recalculated");
+    } catch (err) {
+      console.error("❌ Failed to recalculate leaderboard", err);
+      alert("❌ Failed to recalculate leaderboard");
     }
   };
 
@@ -178,18 +172,6 @@ const [predSort, setPredSort] = useState({ key: "kickoff", dir: "asc" }); // kic
       alert(`❌ Refresh failed for "${comp.name}"`);
     }
   };
-// for predictions 
-// Fast lookups
-const compById = new Map(competitions.map(c => [c.id, c]));
-const matchById = new Map(matches.map(m => [m.id, m]));
-const userById  = new Map(users.map(u => [u.id, u]));
-
-// Compute lock state: if match kickoff is in the past, it's locked
-const isPredictionLocked = (pred) => {
-  const m = matchById.get(pred.matchId);
-  if (!m || !m.kickoff) return false;
-  return new Date(m.kickoff) <= new Date();
-};
 
   // SuperAdmin only
   const handleHideCompetition = async (comp) => {
@@ -341,105 +323,16 @@ const handleUpdateResults = async () => {
     }
   };
 
-// my prediction CRUD handlers
-const handleUpdatePrediction = (id, field, value) => {
-  setPredictions(prev => prev.map(p => (p.id === id ? { ...p, [field]: value } : p)));
-};
-
-const savePrediction = async (pred) => {
-  try {
-    await apiFetch(`/admin/predictions/${pred.id}`, {
-      method: "PUT",
-      body: JSON.stringify(pred),
-    });
-  } catch (err) {
-    console.error("❌ Failed to save prediction", err);
-  }
-};
-
-const deletePrediction = async (id) => {
-  try {
-    await apiFetch(`/admin/predictions/${id}`, { method: "DELETE" });
-    setPredictions(prev => prev.filter(p => p.id !== id));
-  } catch (err) {
-    console.error("❌ Failed to delete prediction", err);
-  }
-};
-
-// Bulk unlock of future predictions
-const handleUnlockPredictions = async () => {
-  try {
-    const resp = await apiFetch("/admin/predictions/unlock", { method: "POST" });
-    alert(resp?.message || "✅ Unlocked predictions (future matches)");
-    await loadPredictions();
-  } catch (err) {
-    console.error("❌ Failed to unlock predictions", err);
-    alert("❌ Unlock failed");
-  }
-};
-
-// Recalculate leaderboard
-const recalcLeaderboard = async () => {
-  try {
-    const resp = await apiFetch("/admin/recalc-leaderboard", { method: "POST" });
-    alert(resp?.message || "✅ Leaderboard recalculated");
-  } catch (err) {
-    console.error("❌ Failed to recalc leaderboard", err);
-    alert("❌ Recalculate failed");
-  }
-};
-// my predictions sort & filter
-const filteredSortedPreds = predictions
-  .filter((p) => {
-    const m = matchById.get(p.matchId);
-    const u = userById.get(p.userId);
-    const comp = m ? compById.get(m.competitionId) : null;
-
-    const haystack = [
-      p.predictedWinner || "",
-      String(p.margin ?? ""),
-      u?.email || "",
-      comp?.name || "",
-      m?.teamA || "",
-      m?.teamB || "",
-    ].join(" ").toLowerCase();
-
-    return haystack.includes(predSearch.toLowerCase());
-  })
-  .sort((a, b) => {
-    const dir = predSort.dir === "asc" ? 1 : -1;
-
-    const ma = matchById.get(a.matchId);
-    const mb = matchById.get(b.matchId);
-    const ua = userById.get(a.userId);
-    const ub = userById.get(b.userId);
-    const ca = ma ? compById.get(ma.competitionId) : null;
-    const cb = mb ? compById.get(mb.competitionId) : null;
-
-    const byKey = (key) => {
-      switch (key) {
-        case "kickoff":
-          return ((new Date(ma?.kickoff || 0)) - (new Date(mb?.kickoff || 0))) * dir;
-        case "competition":
-          return (ca?.name || "").localeCompare(cb?.name || "") * dir;
-        case "winner":
-          return (a.predictedWinner || "").localeCompare(b.predictedWinner || "") * dir;
-        case "user":
-          return (ua?.email || "").localeCompare(ub?.email || "") * dir;
-        default:
-          return 0;
-      }
-    };
-
-    return byKey(predSort.key);
-  });
-
-
 // ✅ The return must open a single JSX root
 return (
   <Box sx={{ p: 3 }}>
     {/* === Admin toolbar === */}
-    <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>   
+    <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>
+      {/* Leaderboard recalc (wire to your existing handler) */}
+      <Button variant="contained" color="primary" onClick={recalcLeaderboard}>
+        Recalculate leaderboard
+      </Button>
+
       {/* Update match results (manual scrape) */}
       <Button variant="outlined" color="secondary" onClick={handleUpdateResults}>
         Update match results
@@ -922,196 +815,5 @@ return (
     </Box>
   );
 }
-{/* === Predictions === */}
-<Accordion>
-  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-    <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-      <Typography sx={{ flex: 1 }}>Predictions</Typography>
-
-      {/* Header actions on the right */}
-      <Box sx={{ display: "flex", gap: 1 }}>
-        <Button
-          size="small"
-          variant="contained"
-          color="primary"
-          onClick={recalcLeaderboard}
-        >
-          Recalculate leaderboard
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          color="secondary"
-          onClick={handleUnlockPredictions}
-          startIcon={<LockOpenIcon />}
-        >
-          Unlock predictions
-        </Button>
-      </Box>
-    </Box>
-  </AccordionSummary>
-
-  <AccordionDetails>
-    <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-      <TextField
-        placeholder="Search predictions (winner, user, competition, team)..."
-        value={predSearch}
-        onChange={(e) => setPredSearch(e.target.value)}
-        InputProps={{ startAdornment: <SearchIcon sx={{ mr: 1 }} /> }}
-        fullWidth
-      />
-    </Box>
-
-    <Table size="small">
-      <TableHead>
-        <TableRow>
-          <TableCell
-            sx={{ cursor: "pointer" }}
-            onClick={() =>
-              setPredSort({
-                key: "kickoff",
-                dir: predSort.key === "kickoff" && predSort.dir === "asc" ? "desc" : "asc",
-              })
-            }
-          >
-            Date {predSort.key === "kickoff" ? (predSort.dir === "asc" ? "↑" : "↓") : ""}
-          </TableCell>
-          <TableCell
-            sx={{ cursor: "pointer" }}
-            onClick={() =>
-              setPredSort({
-                key: "competition",
-                dir: predSort.key === "competition" && predSort.dir === "asc" ? "desc" : "asc",
-              })
-            }
-          >
-            Competition {predSort.key === "competition" ? (predSort.dir === "asc" ? "↑" : "↓") : ""}
-          </TableCell>
-          <TableCell>Match</TableCell>
-          <TableCell
-            sx={{ cursor: "pointer" }}
-            onClick={() =>
-              setPredSort({
-                key: "winner",
-                dir: predSort.key === "winner" && predSort.dir === "asc" ? "desc" : "asc",
-              })
-            }
-          >
-            Predicted winner {predSort.key === "winner" ? (predSort.dir === "asc" ? "↑" : "↓") : ""}
-          </TableCell>
-          <TableCell>Margin</TableCell>
-          <TableCell>Status</TableCell>
-          <TableCell
-            sx={{ cursor: "pointer" }}
-            onClick={() =>
-              setPredSort({
-                key: "user",
-                dir: predSort.key === "user" && predSort.dir === "asc" ? "desc" : "asc",
-              })
-            }
-            align="left"
-          >
-            User {predSort.key === "user" ? (predSort.dir === "asc" ? "↑" : "↓") : ""}
-          </TableCell>
-          <TableCell align="right">Actions</TableCell>
-        </TableRow>
-      </TableHead>
-
-      <TableBody>
-        {filteredSortedPreds.map((p) => {
-          const m = matchById.get(p.matchId);
-          const u = userById.get(p.userId);
-          const c = m ? compById.get(m.competitionId) : null;
-          const locked = isPredictionLocked(p);
-
-          return (
-            <TableRow key={p.id} sx={{ opacity: locked ? 0.65 : 1 }}>
-              <TableCell>
-                {m?.kickoff ? new Date(m.kickoff).toLocaleString() : "-"}
-              </TableCell>
-
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={c?.name || "Unknown"}
-                  sx={{
-                    backgroundColor: c?.color || "#777",
-                    color: "#fff",
-                    fontWeight: 600,
-                  }}
-                />
-              </TableCell>
-
-              <TableCell>
-                {m ? `${m.teamA} vs ${m.teamB}` : "(match missing)"}
-              </TableCell>
-
-              <TableCell>
-                <TextField
-                  value={p.predictedWinner || ""}
-                  onChange={(e) =>
-                    handleUpdatePrediction(p.id, "predictedWinner", e.target.value)
-                  }
-                  size="small"
-                  disabled={locked}
-                />
-              </TableCell>
-
-              <TableCell sx={{ width: 110 }}>
-                <TextField
-                  type="number"
-                  inputProps={{ min: 1, max: 999 }}
-                  value={p.margin ?? ""}
-                  onChange={(e) => {
-                    let v = parseInt(e.target.value || "", 10);
-                    if (isNaN(v)) v = "";
-                    if (typeof v === "number") v = Math.min(999, Math.max(1, v));
-                    handleUpdatePrediction(p.id, "margin", v);
-                  }}
-                  size="small"
-                  disabled={locked}
-                />
-              </TableCell>
-
-              <TableCell>
-                {locked ? (
-                  <Chip
-                    size="small"
-                    icon={<LockIcon sx={{ color: "#fff !important" }} />}
-                    label="Locked"
-                    sx={{ bgcolor: "#999", color: "#fff", fontWeight: 600 }}
-                  />
-                ) : (
-                  <Chip
-                    size="small"
-                    icon={<LockOpenIcon sx={{ color: "#fff !important" }} />}
-                    label="Open"
-                    sx={{ bgcolor: "#4caf50", color: "#fff", fontWeight: 600 }}
-                  />
-                )}
-              </TableCell>
-
-              <TableCell align="left">{u?.email || "-"}</TableCell>
-
-              <TableCell align="right">
-                <Tooltip title="Save">
-                  <IconButton onClick={() => savePrediction(p)}>
-                    <SaveIcon color="success" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton onClick={() => deletePrediction(p.id)}>
-                    <DeleteIcon color="error" />
-                  </IconButton>
-                </Tooltip>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  </AccordionDetails>
-</Accordion>
-
 
 export default AdminPage;
