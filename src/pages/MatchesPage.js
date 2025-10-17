@@ -25,6 +25,9 @@ function MatchesPage() {
   const [selectedCompetition, setSelectedCompetition] = useState("ALL");
   const [hideCompleted, setHideCompleted] = useState(false);
 
+  // ✅ NEW: track which date-clusters have been submitted (locked)
+  const [submittedDates, setSubmittedDates] = useState(new Set());
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -38,10 +41,10 @@ function MatchesPage() {
         setMatches(sorted);
 
         if (user) {
-          const token = localStorage.getItem("token");
+          const authToken = localStorage.getItem("token");
           const preds = await apiFetch("/predictions", {
             headers: {
-              Authorization: `Bearer ${token}`, // ✅ attach token
+              Authorization: `Bearer ${authToken}`, // ✅ attach token
             },
           });
           const mapped = {};
@@ -79,7 +82,8 @@ function MatchesPage() {
     }));
   };
 
-  const handleSubmit = async (clusterMatches) => {
+  // ⬇️ changed: accept dateKey to lock that cluster after success
+  const handleSubmit = async (dateKey, clusterMatches) => {
     try {
       const authToken = token || localStorage.getItem("token");
       for (const match of clusterMatches) {
@@ -90,7 +94,7 @@ function MatchesPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // ✅ attach token
+            Authorization: `Bearer ${authToken}`, // ✅ use authToken
           },
           body: JSON.stringify({
             userId: user.id,
@@ -100,6 +104,14 @@ function MatchesPage() {
           }),
         });
       }
+
+      // ✅ mark this date cluster as submitted (locked)
+      setSubmittedDates((prev) => {
+        const next = new Set(prev);
+        next.add(dateKey);
+        return next;
+      });
+
       alert("✅ Predictions saved!");
     } catch (err) {
       console.error("❌ Failed to submit predictions:", err);
@@ -179,6 +191,10 @@ function MatchesPage() {
           (m) => new Date(m.kickoff) < now
         );
 
+        // ✅ Button is locked if all completed OR this cluster already submitted
+        const clusterSubmitted = submittedDates.has(dateKey);
+        const lockSubmit = allCompleted || clusterSubmitted;
+
         return (
           <Box key={dateKey} mb={4}>
             <Typography variant="h6" gutterBottom>
@@ -212,7 +228,7 @@ function MatchesPage() {
                     <Chip
                       label={match.teamA}
                       onClick={() =>
-                        !isPast && handlePrediction(match.id, match.teamA)
+                        !isPast && !clusterSubmitted && handlePrediction(match.id, match.teamA)
                       }
                       sx={{
                         bgcolor: compColor,
@@ -223,7 +239,7 @@ function MatchesPage() {
                     <Chip
                       label={match.teamB}
                       onClick={() =>
-                        !isPast && handlePrediction(match.id, match.teamB)
+                        !isPast && !clusterSubmitted && handlePrediction(match.id, match.teamB)
                       }
                       sx={{
                         bgcolor: compColor,
@@ -240,23 +256,30 @@ function MatchesPage() {
                     onChange={(e) =>
                       handleMarginChange(match.id, e.target.value)
                     }
-                    disabled={isPast}
+                    disabled={isPast || clusterSubmitted}
                   />
                 </Box>
               );
             })}
 
-            {!allCompleted && (
-              <Box mt={1} textAlign="right">
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={() => handleSubmit(clusterMatches)}
-                >
-                  Submit Predictions
-                </Button>
-              </Box>
-            )}
+            {/* ✅ Submit button that greys/locks after submit or when all completed */}
+            <Box mt={1} textAlign="right">
+              <Button
+                size="small"
+                variant={lockSubmit ? "outlined" : "contained"}
+                color={lockSubmit ? "inherit" : "primary"}
+                disabled={lockSubmit}
+                onClick={() => handleSubmit(dateKey, clusterMatches)}
+                sx={
+                  lockSubmit
+                    ? { bgcolor: "#e0e0e0", color: "#666", cursor: "not-allowed" }
+                    : undefined
+                }
+                startIcon={lockSubmit ? <LockIcon fontSize="small" /> : null}
+              >
+                {lockSubmit ? "Predictions Locked" : "Submit Predictions"}
+              </Button>
+            </Box>
           </Box>
         );
       })}

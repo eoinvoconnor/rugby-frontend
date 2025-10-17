@@ -291,6 +291,18 @@ function AdminPage() {
     setMatches((prev) => prev.map((m) => (m.id === id ? { ...m, [field]: value } : m)));
   };
 
+// 🔄 Manually run results scraper (Admin)
+const handleUpdateResults = async () => {
+  try {
+    const res = await apiFetch("/admin/update-results", { method: "POST" });
+    const updated = typeof res?.updated === "number" ? res.updated : 0;
+    alert(`✅ Results updated. ${updated} matches adjusted.`);
+    await loadMatches(); // so the Matches table reflects any new results
+  } catch (err) {
+    console.error("❌ Update results failed", err);
+    alert("❌ Update results failed — check logs.");
+  }
+};
   const saveMatch = async (match) => {
     try {
       await apiFetch(`/matches/${match.id}`, {
@@ -312,18 +324,26 @@ function AdminPage() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Toolbar — only the new button remains */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={recalcLeaderboard}
-          startIcon={<RefreshIcon />}
-        >
-          Recalculate leaderboard
-        </Button>
-      </Box>
+
+<Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>
+  {/* Leaderboard recalc (wire to your existing handler) */}
+  <Button
+    variant="contained"
+    color="primary"
+    onClick={recalcLeaderboard}
+  >
+    Recalculate leaderboard
+  </Button>
+
+  {/* Update match results (manual scrape) */}
+  <Button
+    variant="outlined"
+    color="secondary"
+    onClick={handleUpdateResults}
+  >
+    Update match results
+  </Button>
+</Box>
 
       {/* === Competitions === */}
       <Accordion>
