@@ -323,27 +323,21 @@ const handleUpdateResults = async () => {
     }
   };
 
-  return (
+// ✅ The return must open a single JSX root
+return (
+  <Box sx={{ p: 3 }}>
+    {/* === Admin toolbar === */}
+    <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>
+      {/* Leaderboard recalc (wire to your existing handler) */}
+      <Button variant="contained" color="primary" onClick={recalcLeaderboard}>
+        Recalculate leaderboard
+      </Button>
 
-<Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>
-  {/* Leaderboard recalc (wire to your existing handler) */}
-  <Button
-    variant="contained"
-    color="primary"
-    onClick={recalcLeaderboard}
-  >
-    Recalculate leaderboard
-  </Button>
-
-  {/* Update match results (manual scrape) */}
-  <Button
-    variant="outlined"
-    color="secondary"
-    onClick={handleUpdateResults}
-  >
-    Update match results
-  </Button>
-</Box>
+      {/* Update match results (manual scrape) */}
+      <Button variant="outlined" color="secondary" onClick={handleUpdateResults}>
+        Update match results
+      </Button>
+    </Box>
 
       {/* === Competitions === */}
       <Accordion>
