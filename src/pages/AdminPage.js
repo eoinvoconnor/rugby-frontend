@@ -187,7 +187,7 @@ const matchById = new Map(matches.map(m => [m.id, m]));
 const userById  = new Map(users.map(u => [u.id, u]));
 
 const isPredictionLocked = (p) => {
-  const m = matchMap.get(p.matchId);
+  const m = matchById.get(p.matchId);
   if (!m) return false;
   const hasStarted = new Date(m.kickoff) <= new Date();
   // If backend also stores p.locked, respect either condition
@@ -404,9 +404,9 @@ const filteredSortedPreds = useMemo(() => {
   const q = predSearch.trim().toLowerCase();
 
   const base = predictions.map(p => {
-    const m = matchMap.get(p.matchId);
-    const u = userMap.get(p.userId);
-    const c = m ? compMap.get(m.competitionId) : null;
+    const m = matchById.get(p.matchId);
+    const u = userById.get(p.userId);
+    const c = m ? compById.get(m.competitionId) : null;
     return { p, m, u, c };
   });
 
@@ -455,7 +455,7 @@ const filteredSortedPreds = useMemo(() => {
   });
 
   return sorted;
-}, [predictions, predSearch, predSort, matchMap, userMap, compMap]);
+}, [predictions, predSearch, predSort, matchById, userById, compById]);
 
 
 // ✅ The return must open a single JSX root
@@ -808,144 +808,7 @@ return (
         </AccordionDetails>
       </Accordion>
 
-      {/* === Users === */}
-      <Accordion>
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Typography>Users</Typography>
-          {/* Right-aligned force logout button */}
-          <Box sx={{ ml: "auto" }}>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={forceLogout}
-              startIcon={<ExitToAppIcon />}
-              size="small"
-            >
-              Force logout all users
-            </Button>
-          </Box>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-            <TextField
-              label="Firstname"
-              value={newUser.firstname}
-              onChange={(e) =>
-                setNewUser({ ...newUser, firstname: e.target.value })
-              }
-            />
-            <TextField
-              label="Surname"
-              value={newUser.surname}
-              onChange={(e) =>
-                setNewUser({ ...newUser, surname: e.target.value })
-              }
-            />
-            <TextField
-              label="Email"
-              value={newUser.email}
-              onChange={(e) =>
-                setNewUser({ ...newUser, email: e.target.value })
-              }
-              sx={{ flex: 1 }}
-            />
-            <Checkbox
-              checked={newUser.isAdmin}
-              onChange={(e) =>
-                setNewUser({ ...newUser, isAdmin: e.target.checked })
-              }
-            />
-            <IconButton color="primary" onClick={handleAddUser}>
-              <AddIcon />
-            </IconButton>
-          </Box>
-
-          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-            <TextField
-              placeholder="Search users..."
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1 }} />,
-              }}
-            />
-          </Box>
-
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Firstname</TableCell>
-                <TableCell>Surname</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Admin</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users
-                .filter(
-                  (u) =>
-                    u.firstname.toLowerCase().includes(userSearch.toLowerCase()) ||
-                    u.surname.toLowerCase().includes(userSearch.toLowerCase()) ||
-                    u.email.toLowerCase().includes(userSearch.toLowerCase())
-                )
-                .map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell>
-                      <TextField
-                        value={u.firstname}
-                        onChange={(e) =>
-                          handleUpdateUser(u.id, "firstname", e.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        value={u.surname}
-                        onChange={(e) =>
-                          handleUpdateUser(u.id, "surname", e.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        value={u.email}
-                        onChange={(e) =>
-                          handleUpdateUser(u.id, "email", e.target.value)
-                        }
-                        fullWidth
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Checkbox
-                        checked={u.isAdmin}
-                        onChange={(e) =>
-                          handleUpdateUser(u.id, "isAdmin", e.target.checked)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Save">
-                        <IconButton onClick={() => saveUser(u)}>
-                          <SaveIcon color="success" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton onClick={() => deleteUser(u.id)}>
-                          <DeleteIcon color="error" />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </AccordionDetails>
-      </Accordion>
-    </Box>
-  );
-}
-{/* === Predictions === */}
+      {/* === Predictions === */}
 <Accordion>
   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
     <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
@@ -1135,6 +998,145 @@ return (
     </Table>
   </AccordionDetails>
 </Accordion>
+
+
+      {/* === Users === */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Typography>Users</Typography>
+          {/* Right-aligned force logout button */}
+          <Box sx={{ ml: "auto" }}>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={forceLogout}
+              startIcon={<ExitToAppIcon />}
+              size="small"
+            >
+              Force logout all users
+            </Button>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <TextField
+              label="Firstname"
+              value={newUser.firstname}
+              onChange={(e) =>
+                setNewUser({ ...newUser, firstname: e.target.value })
+              }
+            />
+            <TextField
+              label="Surname"
+              value={newUser.surname}
+              onChange={(e) =>
+                setNewUser({ ...newUser, surname: e.target.value })
+              }
+            />
+            <TextField
+              label="Email"
+              value={newUser.email}
+              onChange={(e) =>
+                setNewUser({ ...newUser, email: e.target.value })
+              }
+              sx={{ flex: 1 }}
+            />
+            <Checkbox
+              checked={newUser.isAdmin}
+              onChange={(e) =>
+                setNewUser({ ...newUser, isAdmin: e.target.checked })
+              }
+            />
+            <IconButton color="primary" onClick={handleAddUser}>
+              <AddIcon />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <TextField
+              placeholder="Search users..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              InputProps={{
+                startAdornment: <SearchIcon sx={{ mr: 1 }} />,
+              }}
+            />
+          </Box>
+
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Firstname</TableCell>
+                <TableCell>Surname</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Admin</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {users
+                .filter(
+                  (u) =>
+                    u.firstname.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.surname.toLowerCase().includes(userSearch.toLowerCase()) ||
+                    u.email.toLowerCase().includes(userSearch.toLowerCase())
+                )
+                .map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell>
+                      <TextField
+                        value={u.firstname}
+                        onChange={(e) =>
+                          handleUpdateUser(u.id, "firstname", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={u.surname}
+                        onChange={(e) =>
+                          handleUpdateUser(u.id, "surname", e.target.value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <TextField
+                        value={u.email}
+                        onChange={(e) =>
+                          handleUpdateUser(u.id, "email", e.target.value)
+                        }
+                        fullWidth
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Checkbox
+                        checked={u.isAdmin}
+                        onChange={(e) =>
+                          handleUpdateUser(u.id, "isAdmin", e.target.checked)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Save">
+                        <IconButton onClick={() => saveUser(u)}>
+                          <SaveIcon color="success" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton onClick={() => deleteUser(u.id)}>
+                          <DeleteIcon color="error" />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </AccordionDetails>
+      </Accordion>
+    </Box>
+  );
+}
 
 
 export default AdminPage;
