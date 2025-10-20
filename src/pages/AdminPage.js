@@ -107,16 +107,16 @@ function AdminPage() {
     }
   };
 
-  const loadPredictions = async () => {
-    try {
-      // all users' predictions for Admin
-      const data = await apiFetch("/predictions?all=1"); // or ?all=1&expand=1 if you wired expand
-      setPredictions(data);
-    } catch (err) {
-      console.error("❌ Failed to load predictions", err);
-    }
-  };
-
+// load predictions for Admin → use all + expand
+const loadPredictions = async () => {
+  try {
+    const data = await apiFetch("/predictions?all=1&expand=1");
+    setPredictions(data);
+    // console.debug("Pred sample:", data[0]);
+  } catch (err) {
+    console.error("❌ Failed to load predictions", err);
+  }
+};
   const loadUsers = async () => {
     try {
       const data = await apiFetch("/users");
