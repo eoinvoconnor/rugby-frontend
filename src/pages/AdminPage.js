@@ -109,8 +109,9 @@ function AdminPage() {
 
   const loadPredictions = async () => {
     try {
-      const data = await apiFetch("/admin/predictions"); // returns all users’ predictions
-      setPredictions(Array.isArray(data) ? data : []);
+      // all users' predictions for Admin
+      const data = await apiFetch("/predictions?all=1"); // or ?all=1&expand=1 if you wired expand
+      setPredictions(data);
     } catch (err) {
       console.error("❌ Failed to load predictions", err);
     }
