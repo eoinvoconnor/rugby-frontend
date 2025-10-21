@@ -80,6 +80,14 @@ function AdminPage() {
   const [predSearch, setPredSearch] = useState("");
   const [predSort, setPredSort] = useState({ key: "kickoff", dir: "asc" }); // kickoff|competition|winner|user
 
+  // Compact coloured pill for “Winner by N”
+const pillStyle = (bg = "#607d8b") => ({
+  bgcolor: bg,
+  color: "#fff",
+  fontWeight: 600,
+  px: 1.25,
+});
+
 
   // Load data on mount
   useEffect(() => {
@@ -869,24 +877,32 @@ return (
         <Chip label={compName} size="small" sx={{ bgcolor: compColor, color: "#fff" }}/>
       </TableCell>
       <TableCell>{matchText}</TableCell>
-      <TableCell sx={{ width: 220 }}>
-        <TextField
+      // winner+margin as a compact chip (like MyPredictions)
+<TableCell sx={{ minWidth: 180 }}>
+  {(() => {
+    const m = matchById.get(p.matchId);                     // you already have matchById/userById
+    const color =
+      (m && (m.competitionColor || compById.get(m.competitionId)?.color)) ||
+      p.competitionColor ||
+      "#607d8b";
+
+    const winner = p.predictedWinner;
+    const margin = p.margin;
+
+    if (winner && (margin || margin === 0)) {
+      return (
+        <Chip
           size="small"
-          value={p.predictedWinner || ""}
-          onChange={(e) => handleUpdatePrediction(p, "predictedWinner", e.target.value)}
-          disabled={isLocked}
+          label={`${winner} by ${margin}`}
+          sx={pillStyle(color)}
+          title={`${winner} by ${margin}`}
         />
-      </TableCell>
-      <TableCell sx={{ width: 120 }}>
-        <TextField
-          size="small"
-          type="number"
-          value={p.margin ?? ""}
-          onChange={(e) => handleUpdatePrediction(p, "margin", Number(e.target.value))}
-          disabled={isLocked}
-        />
-      </TableCell>
-      <TableCell>
+      );
+    }
+    // no prediction yet
+    return <span style={{ color: "#9aa0a6" }}>—</span>;
+  })()}
+</TableCell>      <TableCell>
         <Chip
           size="small"
           color={isLocked ? "warning" : "success"}
