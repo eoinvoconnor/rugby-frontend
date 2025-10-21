@@ -326,13 +326,12 @@ const isPredictionLocked = (p) => {
 // 🔄 Manually run results scraper (Admin)
 const handleUpdateResults = async () => {
   try {
-    const res = await apiFetch(
-      "/admin/update-results?daysBack=7&daysForward=0",
-      { method: "POST" }
-    );
+    const res = await apiFetch("/admin/update-results?daysBack=7&daysForward=0", {
+      method: "POST",
+    });
     const updated = typeof res?.updated === "number" ? res.updated : 0;
     alert(`✅ Results updated. ${updated} matches adjusted.`);
-    await loadMatches(); // keep UI in sync
+    await loadMatches(); // refresh table
   } catch (err) {
     console.error("❌ Update results failed", err);
     alert("❌ Update results failed — check logs.");
