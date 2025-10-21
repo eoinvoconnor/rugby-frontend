@@ -866,7 +866,7 @@ return (
   const compName  = m?.competitionName || "Unknown";
   const compColor = m?.competitionColor || "#9e9e9e";
   const date      = m?.kickoff ? new Date(m.kickoff).toLocaleString() : "-";
-  const matchText = m ? `${m.teamA} vs ${m.teamB}` : "(match missing)";
+  // const matchText = m ? `${m.teamA} vs ${m.teamB}` : "(match missing)";
   const userText  = u ? (u.firstname || u.surname ? `${u.firstname} ${u.surname}`.trim() : u.email) : "-";
   const isLocked  = m ? new Date(m.kickoff) <= new Date() : false;
 
@@ -877,32 +877,32 @@ return (
         <Chip label={compName} size="small" sx={{ bgcolor: compColor, color: "#fff" }}/>
       </TableCell>
       <TableCell>{matchText}</TableCell>
-      // winner+margin as a compact chip (like MyPredictions)
-<TableCell sx={{ minWidth: 180 }}>
-  {(() => {
-    const m = matchById.get(p.matchId);                     // you already have matchById/userById
-    const color =
-      (m && (m.competitionColor || compById.get(m.competitionId)?.color)) ||
-      p.competitionColor ||
-      "#607d8b";
+      <TableCell sx={{ minWidth: 180 }}>
+        {(() => {
+          const m = matchById.get(p.matchId);                     // you already have matchById/userById
+          const color =
+            (m && (m.competitionColor || compById.get(m.competitionId)?.color)) ||
+            p.competitionColor ||
+            "#607d8b";
 
-    const winner = p.predictedWinner;
-    const margin = p.margin;
+          const winner = p.predictedWinner;
+          const margin = p.margin;
 
-    if (winner && (margin || margin === 0)) {
-      return (
-        <Chip
-          size="small"
-          label={`${winner} by ${margin}`}
-          sx={pillStyle(color)}
-          title={`${winner} by ${margin}`}
-        />
-      );
-    }
-    // no prediction yet
-    return <span style={{ color: "#9aa0a6" }}>—</span>;
-  })()}
-</TableCell>      <TableCell>
+          if (winner && (margin || margin === 0)) {
+            return (
+              <Chip
+                size="small"
+                label={`${winner} by ${margin}`}
+                sx={pillStyle(color)}
+                title={`${winner} by ${margin}`}
+              />
+            );
+          }
+          // no prediction yet
+          return <span style={{ color: "#9aa0a6" }}>—</span>;
+        })()}
+      </TableCell>
+      <TableCell>
         <Chip
           size="small"
           color={isLocked ? "warning" : "success"}
