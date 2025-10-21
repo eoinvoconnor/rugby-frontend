@@ -876,7 +876,7 @@ return (
       <TableCell>
         <Chip label={compName} size="small" sx={{ bgcolor: compColor, color: "#fff" }}/>
       </TableCell>
-      <TableCell>{matchText}</TableCell>
+      
       <TableCell sx={{ minWidth: 180 }}>
         {(() => {
           const m = matchById.get(p.matchId);                     // you already have matchById/userById
