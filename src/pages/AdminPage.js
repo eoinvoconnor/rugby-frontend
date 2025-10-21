@@ -110,9 +110,9 @@ function AdminPage() {
 // load predictions for Admin → use all + expand
 const loadPredictions = async () => {
   try {
+    // ask backend to embed match+user to avoid client-side joins
     const data = await apiFetch("/predictions?all=1&expand=1");
-    setPredictions(data);
-    // console.debug("Pred sample:", data[0]);
+    setPredictions(data || []);
   } catch (err) {
     console.error("❌ Failed to load predictions", err);
   }
@@ -852,58 +852,59 @@ return (
     <Table size="small">
       <TableHead>
         <TableRow>
-          <TableCell
-            sx={{ cursor: "pointer" }}
-            onClick={() =>
-              setPredSort({
-                key: "kickoff",
-                dir: predSort.key === "kickoff" && predSort.dir === "asc" ? "desc" : "asc",
-              })
-            }
-          >
-            Date {predSort.key === "kickoff" ? (predSort.dir === "asc" ? "↑" : "↓") : ""}
-          </TableCell>
-          <TableCell
-            sx={{ cursor: "pointer" }}
-            onClick={() =>
-              setPredSort({
-                key: "competition",
-                dir: predSort.key === "competition" && predSort.dir === "asc" ? "desc" : "asc",
-              })
-            }
-          >
-            Competition {predSort.key === "competition" ? (predSort.dir === "asc" ? "↑" : "↓") : ""}
-          </TableCell>
-          <TableCell>Match</TableCell>
-          <TableCell
-            sx={{ cursor: "pointer" }}
-            onClick={() =>
-              setPredSort({
-                key: "winner",
-                dir: predSort.key === "winner" && predSort.dir === "asc" ? "desc" : "asc",
-              })
-            }
-          >
-            Predicted winner {predSort.key === "winner" ? (predSort.dir === "asc" ? "↑" : "↓") : ""}
-          </TableCell>
-          <TableCell>Margin</TableCell>
-          <TableCell>Status</TableCell>
-          <TableCell
-            sx={{ cursor: "pointer" }}
-            onClick={() =>
-              setPredSort({
-                key: "user",
-                dir: predSort.key === "user" && predSort.dir === "asc" ? "desc" : "asc",
-              })
-            }
-            align="left"
-          >
-            User {predSort.key === "user" ? (predSort.dir === "asc" ? "↑" : "↓") : ""}
-          </TableCell>
-          <TableCell align="right">Actions</TableCell>
-        </TableRow>
-      </TableHead>
+        {predictions.map((p) => {
+  const m   = p.match;                       // may be null if orphan
+  const u   = p.user;
+  const compName  = m?.competitionName || "Unknown";
+  const compColor = m?.competitionColor || "#9e9e9e";
+  const date      = m?.kickoff ? new Date(m.kickoff).toLocaleString() : "-";
+  const matchText = m ? `${m.teamA} vs ${m.teamB}` : "(match missing)";
+  const userText  = u ? (u.firstname || u.surname ? `${u.firstname} ${u.surname}`.trim() : u.email) : "-";
+  const isLocked  = m ? new Date(m.kickoff) <= new Date() : false;
 
+  return (
+    <TableRow key={`${p.userId}-${p.matchId}`}>
+      <TableCell>{date}</TableCell>
+      <TableCell>
+        <Chip label={compName} size="small" sx={{ bgcolor: compColor, color: "#fff" }}/>
+      </TableCell>
+      <TableCell>{matchText}</TableCell>
+      <TableCell sx={{ width: 220 }}>
+        <TextField
+          size="small"
+          value={p.predictedWinner || ""}
+          onChange={(e) => handleUpdatePrediction(p, "predictedWinner", e.target.value)}
+          disabled={isLocked}
+        />
+      </TableCell>
+      <TableCell sx={{ width: 120 }}>
+        <TextField
+          size="small"
+          type="number"
+          value={p.margin ?? ""}
+          onChange={(e) => handleUpdatePrediction(p, "margin", Number(e.target.value))}
+          disabled={isLocked}
+        />
+      </TableCell>
+      <TableCell>
+        <Chip
+          size="small"
+          color={isLocked ? "warning" : "success"}
+          label={isLocked ? "Locked" : "Open"}
+        />
+      </TableCell>
+      <TableCell>{userText}</TableCell>
+      <TableCell align="right">
+        <IconButton onClick={() => savePrediction(p)} disabled={!m}>
+          <SaveIcon color="success" />
+        </IconButton>
+        <IconButton onClick={() => deletePrediction(p)}>
+          <DeleteIcon color="error" />
+        </IconButton>
+      </TableCell>
+    </TableRow>
+  );
+})}
       <TableBody>
         {filteredSortedPreds.map((p) => {
           const m = matchById.get(p.matchId);
