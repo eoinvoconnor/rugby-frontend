@@ -905,6 +905,9 @@ return (
     </TableRow>
   );
 })}
+        </TableRow>
+      </TableHead>
+
       <TableBody>
         {filteredSortedPreds.map((p) => {
           const m = matchById.get(p.matchId);
