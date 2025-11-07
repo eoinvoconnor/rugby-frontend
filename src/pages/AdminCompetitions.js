@@ -16,7 +16,7 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
 } from "@mui/icons-material";
-import api from "../api/api";
+import { apiFetch } from "../api/api";
 
 export default function AdminCompetitions() {
   const [competitions, setCompetitions] = useState([]);
