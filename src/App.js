@@ -26,7 +26,6 @@ import UserLogin from "./pages/UserLogin";
 import AdminPage from "./pages/AdminPage";
 import AdminMatches from "./pages/AdminMatches";
 
-
 import { UserProvider, useUser } from "./context/UserContext";
 import { API_BASE_URL } from "./api/api";
 
@@ -50,7 +49,10 @@ function AppContent() {
           { text: "My predictions", path: "/mypredictions", title: "My predictions" },
           { text: "Profile", path: "/profile", title: "Profile" },
           ...(user.isAdmin
-            ? [{ text: "Admin", path: "/admin", title: "Admin" }]
+            ? [
+              { text: "Admin", path: "/admin", title: "Admin" }
+              { text: "Admin Matches", path: "/adminMatches", title: "Admin Matches" }
+            ]
             : []),
           { text: "Logout", action: logout }, // ✅ logout wired
         ]
