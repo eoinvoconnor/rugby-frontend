@@ -53,10 +53,10 @@ function AppContent() {
           { text: "Profile", path: "/profile", title: "Profile" },
           ...(user.isAdmin
             ? [
-              { text: "Admin Competitions", path: "/admin Competitions", title: "Admin  Competitions" }
-              { text: "Admin Matches", path: "/adminMatches", title: "Admin Matches" }
-              { text: "Admin Predictions", path: "/adminPredictions", title: "Admin Predictions" }
-              { text: "Admin Users", path: "/adminUsers", title: "Admin Users" }
+              { text: "Admin Competitions", path: "/admin Competitions", title: "Admin  Competitions" },
+              { text: "Admin Matches", path: "/adminMatches", title: "Admin Matches" },
+              { text: "Admin Predictions", path: "/adminPredictions", title: "Admin Predictions" },
+              { text: "Admin Users", path: "/adminUsers", title: "Admin Users" },
             ]
             : []),
           { text: "Logout", action: logout }, // ✅ logout wired
