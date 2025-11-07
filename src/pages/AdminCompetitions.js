@@ -17,7 +17,6 @@ import {
   Add as AddIcon,
 } from "@mui/icons-material";
 import api from "../api";
-import ColorPicker from "../components/ColorPicker";
 
 export default function AdminCompetitions() {
   const [competitions, setCompetitions] = useState([]);
@@ -113,10 +112,14 @@ export default function AdminCompetitions() {
               />
             </Grid>
             <Grid item xs={6} sm={1}>
-              <ColorPicker
-                color={comp.color}
-                onChange={(color) => handleChange(index, "color", color)}
-              />
+                <TextField
+                    type="color"
+                    value={c.color}
+                    onChange={(e) =>
+                     handleUpdateCompetition(c.id, "color", e.target.value)
+                    }
+                    sx={{ width: 50 }}
+                />
             </Grid>
             <Grid item xs={6} sm={2}>
               <Tooltip title="Save">
