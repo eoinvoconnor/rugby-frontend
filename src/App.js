@@ -24,6 +24,8 @@ import MyPredictionsPage from "./pages/MyPredictionsPage";
 import UserProfile from "./pages/UserProfile";
 import UserLogin from "./pages/UserLogin";
 import AdminPage from "./pages/AdminPage";
+import AdminMatches from "./pages/AdminPatches";
+
 
 import { UserProvider, useUser } from "./context/UserContext";
 import { API_BASE_URL } from "./api/api";
@@ -182,6 +184,7 @@ function AppContent() {
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/login" element={<UserLogin />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/adminMatches" element={<AdminMatches />} />
         </Routes>
       </Box>
     </Box>
