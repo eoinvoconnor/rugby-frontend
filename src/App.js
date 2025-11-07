@@ -23,8 +23,11 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import MyPredictionsPage from "./pages/MyPredictionsPage";
 import UserProfile from "./pages/UserProfile";
 import UserLogin from "./pages/UserLogin";
-import AdminPage from "./pages/AdminPage";
+import AdminCompetitions from "./pages/AdminCompetitions";
 import AdminMatches from "./pages/AdminMatches";
+import AdminPredictions from "./pages/AdminPredictions";
+import AdminUsers from "./pages/AdminUsers";
+
 
 import { UserProvider, useUser } from "./context/UserContext";
 import { API_BASE_URL } from "./api/api";
@@ -50,8 +53,10 @@ function AppContent() {
           { text: "Profile", path: "/profile", title: "Profile" },
           ...(user.isAdmin
             ? [
-              { text: "Admin", path: "/admin", title: "Admin" }
+              { text: "Admin Competitions", path: "/admin Competitions", title: "Admin  Competitions" }
               { text: "Admin Matches", path: "/adminMatches", title: "Admin Matches" }
+              { text: "Admin Predictions", path: "/adminPredictions", title: "Admin Predictions" }
+              { text: "Admin Users", path: "/adminUsers", title: "Admin Users" }
             ]
             : []),
           { text: "Logout", action: logout }, // ✅ logout wired
@@ -185,8 +190,10 @@ function AppContent() {
           <Route path="/mypredictions" element={<MyPredictionsPage />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/login" element={<UserLogin />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/adminCompetitions" element={<AdminCompetitions />} />
           <Route path="/adminMatches" element={<AdminMatches />} />
+          <Route path="/adminPredictions" element={<AdminPredictions />} />
+          <Route path="/adminUsers" element={<AdminUsers />} />
         </Routes>
       </Box>
     </Box>
