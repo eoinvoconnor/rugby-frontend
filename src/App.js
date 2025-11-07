@@ -24,7 +24,7 @@ import MyPredictionsPage from "./pages/MyPredictionsPage";
 import UserProfile from "./pages/UserProfile";
 import UserLogin from "./pages/UserLogin";
 import AdminPage from "./pages/AdminPage";
-import AdminMatches from "./pages/AdminPatches";
+import AdminMatches from "./pages/AdminMatches";
 
 
 import { UserProvider, useUser } from "./context/UserContext";
