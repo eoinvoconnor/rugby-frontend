@@ -8,26 +8,25 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Tooltip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import DeleteIcon from "@mui/icons-material/Delete";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SaveIcon from "@mui/icons-material/Save";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
 import { apiFetch } from "../api/api";
 
 export default function AdminCompetitions() {
   const [competitions, setCompetitions] = useState([]);
-  const [newCompetition, setNewCompetition] = useState({
-    name: "",
-    feedUrl: "",
-    color: "#888888",
-  });
+  const [newName, setNewName] = useState("");
+  const [newFeed, setNewFeed] = useState("");
+  const [newColor, setNewColor] = useState("#888888");
+  const [showArchived, setShowArchived] = useState(false);
 
   const fetchCompetitions = async () => {
     try {
-      const res = await apiFetch("/api/competitions");
-      setCompetitions(res);
+      const data = await apiFetch("/api/competitions");
+      setCompetitions(data);
     } catch (err) {
       console.error("Failed to fetch competitions:", err);
     }
@@ -37,11 +36,11 @@ export default function AdminCompetitions() {
     fetchCompetitions();
   }, []);
 
-  const handleUpdateCompetition = async (comp) => {
+  const handleUpdateCompetition = async (updated) => {
     try {
-      await apiFetch(`/api/competitions/${comp.id}`, {
+      await apiFetch(`/api/competitions/${updated.id}`, {
         method: "PUT",
-        body: JSON.stringify(comp),
+        body: JSON.stringify(updated),
       });
       fetchCompetitions();
     } catch (err) {
@@ -51,9 +50,7 @@ export default function AdminCompetitions() {
 
   const handleDeleteCompetition = async (id) => {
     try {
-      await apiFetch(`/api/competitions/${id}`, {
-        method: "DELETE",
-      });
+      await apiFetch(`/api/competitions/${id}`, { method: "DELETE" });
       fetchCompetitions();
     } catch (err) {
       console.error("Failed to delete competition:", err);
@@ -62,9 +59,7 @@ export default function AdminCompetitions() {
 
   const handleRefreshCompetition = async (id) => {
     try {
-      await apiFetch(`/api/competitions/${id}/refresh`, {
-        method: "POST",
-      });
+      await apiFetch(`/api/competitions/${id}/refresh`);
       fetchCompetitions();
     } catch (err) {
       console.error("Failed to refresh competition:", err);
@@ -75,9 +70,15 @@ export default function AdminCompetitions() {
     try {
       await apiFetch("/api/competitions", {
         method: "POST",
-        body: JSON.stringify(newCompetition),
+        body: JSON.stringify({
+          name: newName,
+          feedUrl: newFeed,
+          color: newColor,
+        }),
       });
-      setNewCompetition({ name: "", feedUrl: "", color: "#888888" });
+      setNewName("");
+      setNewFeed("");
+      setNewColor("#888888");
       fetchCompetitions();
     } catch (err) {
       console.error("Failed to add competition:", err);
@@ -95,37 +96,83 @@ export default function AdminCompetitions() {
           <Typography variant="h6">Competitions</Typography>
         </AccordionSummary>
         <AccordionDetails>
-          {competitions.map((c) => (
-            <Box key={c.id} sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
-              <TextField
-                label="Name"
-                value={c.name}
-                onChange={(e) => handleUpdateCompetition({ ...c, name: e.target.value })}
-              />
-              <TextField
-                label="Feed URL"
-                value={c.feedUrl}
-                onChange={(e) => handleUpdateCompetition({ ...c, feedUrl: e.target.value })}
-                fullWidth
-              />
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <input
-                  type="color"
-                  value={c.color}
-                  onChange={(e) => handleUpdateCompetition({ ...c, color: e.target.value })}
+          <Button
+            variant="outlined"
+            onClick={() => setShowArchived(!showArchived)}
+            sx={{ mb: 2 }}
+          >
+            {showArchived ? "Hide Archived" : "Show Archived"}
+          </Button>
+          {competitions
+            .filter((c) => (showArchived ? true : !c.archived))
+            .map((c) => (
+              <Box
+                key={c.id}
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  mb: 1,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+              >
+                <TextField
+                  label="Name"
+                  value={c.name}
+                  onChange={(e) =>
+                    setCompetitions((prev) =>
+                      prev.map((comp) =>
+                        comp.id === c.id
+                          ? { ...comp, name: e.target.value }
+                          : comp
+                      )
+                    )
+                  }
                 />
                 <TextField
-                  label="Hex"
-                  value={c.color}
-                  onChange={(e) => handleUpdateCompetition({ ...c, color: e.target.value })}
-                  sx={{ width: 100 }}
+                  label="Feed"
+                  value={c.feedUrl}
+                  fullWidth
+                  onChange={(e) =>
+                    setCompetitions((prev) =>
+                      prev.map((comp) =>
+                        comp.id === c.id
+                          ? { ...comp, feedUrl: e.target.value }
+                          : comp
+                      )
+                    )
+                  }
                 />
+                <input
+                  type="color"
+                  value={c.color || "#888888"}
+                  onChange={(e) =>
+                    setCompetitions((prev) =>
+                      prev.map((comp) =>
+                        comp.id === c.id
+                          ? { ...comp, color: e.target.value }
+                          : comp
+                      )
+                    )
+                  }
+                />
+                <Tooltip title="Save">
+                  <IconButton onClick={() => handleUpdateCompetition(c)}>
+                    <SaveIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <IconButton onClick={() => handleDeleteCompetition(c.id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Refresh feed">
+                  <IconButton onClick={() => handleRefreshCompetition(c.id)}>
+                    <RefreshIcon />
+                  </IconButton>
+                </Tooltip>
               </Box>
-              <IconButton onClick={() => handleRefreshCompetition(c.id)}><RefreshIcon /></IconButton>
-              <IconButton onClick={() => handleUpdateCompetition(c)}><SaveIcon /></IconButton>
-              <IconButton onClick={() => handleDeleteCompetition(c.id)}><DeleteIcon /></IconButton>
-            </Box>
-          ))}
+            ))}
         </AccordionDetails>
       </Accordion>
 
@@ -136,30 +183,22 @@ export default function AdminCompetitions() {
         <AccordionDetails>
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <TextField
-              label="Name"
-              value={newCompetition.name}
-              onChange={(e) => setNewCompetition({ ...newCompetition, name: e.target.value })}
+              label="Competition Name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
             />
             <TextField
               label="Feed URL"
-              value={newCompetition.feedUrl}
-              onChange={(e) => setNewCompetition({ ...newCompetition, feedUrl: e.target.value })}
+              value={newFeed}
               fullWidth
+              onChange={(e) => setNewFeed(e.target.value)}
             />
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <input
-                type="color"
-                value={newCompetition.color}
-                onChange={(e) => setNewCompetition({ ...newCompetition, color: e.target.value })}
-              />
-              <TextField
-                label="Hex"
-                value={newCompetition.color}
-                onChange={(e) => setNewCompetition({ ...newCompetition, color: e.target.value })}
-                sx={{ width: 100 }}
-              />
-            </Box>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleAddCompetition}>
+            <input
+              type="color"
+              value={newColor}
+              onChange={(e) => setNewColor(e.target.value)}
+            />
+            <Button variant="contained" onClick={handleAddCompetition}>
               Add
             </Button>
           </Box>
