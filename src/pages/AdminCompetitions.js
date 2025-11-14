@@ -69,7 +69,7 @@ export default function AdminCompetitions() {
     try {
       await apiFetch("/competitions", {
         method: "POST",
-        body: JSON.stringify({ name: newName, feedUrl: newFeed, color: newColor }),
+        body: JSON.stringify({ name: newName, url: newFeed, color: newColor }),
       });
       setNewName("");
       setNewFeed("");
