@@ -109,11 +109,11 @@ export default function AdminCompetitions() {
               />
               <TextField
                 label="Feed URL"
-                value={c.feedUrl}
+                value={c.url}
                 onChange={(e) =>
                   setCompetitions((prev) =>
                     prev.map((comp) =>
-                      comp.id === c.id ? { ...comp, feedUrl: e.target.value } : comp
+                      comp.id === c.id ? { ...comp, url: e.target.value } : comp
                     )
                   )
                 }
