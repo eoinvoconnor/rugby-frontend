@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { DataGrid } from "@mui/x-data-grid";
-import axios from "axios";
+import { apiFetch } from "../api/api";
 import dayjs from "dayjs";
 
 export default function AdminMatches() {
@@ -17,10 +17,10 @@ export default function AdminMatches() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const matchRes = await axios.get("/api/matches");
-      const predRes = await axios.get("/api/predictions");
-      setMatches(matchRes.data);
-      setPredictions(predRes.data);
+      const matchRes = await apiFetch("/matches");
+      const predRes = await apiFetch("/predictions");
+      setMatches(matchRes);
+      setPredictions(predRes);
     };
     fetchData();
   }, []);
@@ -32,8 +32,9 @@ export default function AdminMatches() {
     );
     setMatches(updated);
     try {
-      await axios.put(`/api/matches/${id}`, {
-        ...updated.find((m) => m.id === id),
+      await apiFetch(`/matches/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(updated.find((m) => m.id === id)),
       });
     } catch (err) {
       console.error("Update failed", err);
