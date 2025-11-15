@@ -18,7 +18,7 @@ export default function AdminMatches() {
   useEffect(() => {
     const fetchData = async () => {
       const matchRes = await apiFetch("/matches");
-      const predRes = await apiFetch("/api/predictions?all=1");
+      const predRes = await apiFetch("/predictions?all=1");
       setMatches(matchRes);
       setPredictions(predRes);
     };
